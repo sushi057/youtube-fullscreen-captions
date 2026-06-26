@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Caption Mode for YouTube",
+  "version": "0.1.0",
+  "description": "Adds a button to the YouTube watch page that opens the current video in distraction-free fullscreen-caption mode.",
+  "content_scripts": [
+    {
+      "matches": ["*://www.youtube.com/watch*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

@@ -1,0 +1,22 @@
+/* Match the look of YouTube's pill-shaped action buttons. */
+.caption-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 16px;
+  margin-left: 8px;
+  border: none;
+  border-radius: 18px;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--yt-spec-text-primary, #f1f1f1);
+  font-family: "Roboto", "Arial", sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 36px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.caption-mode-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
