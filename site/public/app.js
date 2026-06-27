@@ -178,8 +178,8 @@ function renderStage(now) {
   for (let i = page.start; i <= page.end; i++) {
     const span = document.createElement("span");
     const shown = mode === "phrase" || i <= wi;
-    span.className =
-      "word" + (shown ? "" : " hidden") + (grew && i === wi ? " new" : "");
+    const animate = mode === "flow" && grew && i === wi;
+    span.className = "word" + (shown ? "" : " hidden") + (animate ? " new" : "");
     span.textContent = allWords[i].text + " ";
     stageEl.appendChild(span);
   }

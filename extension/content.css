@@ -1,22 +1,39 @@
-/* Match the look of YouTube's pill-shaped action buttons. */
+/* Match the look of YouTube's pill-shaped action buttons (icon + label). */
 .caption-mode-btn {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
   height: 36px;
-  padding: 0 16px;
+  padding: 0 16px 0 12px;
   margin-left: 8px;
   border: none;
   border-radius: 18px;
-  background-color: rgba(255, 255, 255, 0.1);
-  color: var(--yt-spec-text-primary, #f1f1f1);
+  background-color: var(
+    --yt-sys-color-baseline--additive-background,
+    rgba(255, 255, 255, 0.1)
+  );
+  color: var(--yt-sys-color-baseline--text-primary, #f1f1f1);
   font-family: "Roboto", "Arial", sans-serif;
   font-size: 14px;
   font-weight: 500;
-  line-height: 36px;
   white-space: nowrap;
   cursor: pointer;
 }
 
 .caption-mode-btn:hover {
-  background-color: rgba(255, 255, 255, 0.2);
+  background-color: var(
+    --yt-sys-color-baseline--button-chip-background-hover,
+    rgba(255, 255, 255, 0.2)
+  );
+}
+
+.caption-mode-icon {
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+  flex: none;
+}
+
+.caption-mode-text {
+  line-height: 1;
 }

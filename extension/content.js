@@ -36,7 +36,15 @@ function buildButton() {
   btn.className = "caption-mode-btn";
   btn.type = "button";
   btn.title = "Open in Caption Mode";
-  btn.textContent = "Caption Mode";
+  // Icon + label to match YouTube's native action buttons (Share, Download…).
+  // Material "closed caption" glyph: a filled white box with "CC" cut out.
+  btn.innerHTML =
+    '<svg class="caption-mode-icon" viewBox="0 0 24 24" aria-hidden="true">' +
+    '<path d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V6c0-1.1-.89-2-2-2zm-8 ' +
+    "7H9.5v-.5h-2v3h2V13H11v1c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 " +
+    "1v1zm7 0h-1.5v-.5h-2v3h2V13H18v1c0 .55-.45 1-1 1h-3c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 " +
+    '1 .45 1 1v1z"/></svg>' +
+    '<span class="caption-mode-text">Caption Mode</span>';
   btn.addEventListener("click", openCaptionMode);
   return btn;
 }
@@ -50,12 +58,27 @@ function findActionRow() {
   );
 }
 
+// Read the exact background color of a real YouTube tonal button so ours
+// matches precisely, whatever the theme/version resolves it to.
+function nativeButtonBg() {
+  const native = document.querySelector(
+    "ytd-watch-metadata button.yt-spec-button-shape-next--tonal, " +
+    "ytd-watch-metadata .yt-spec-button-shape-next--mono.yt-spec-button-shape-next--tonal"
+  );
+  if (!native) return null;
+  const bg = getComputedStyle(native).backgroundColor;
+  return bg && bg !== "rgba(0, 0, 0, 0)" ? bg : null;
+}
+
 function injectButton() {
   if (!getVideoId()) return;
   if (document.getElementById(BUTTON_ID)) return; // already present
   const row = findActionRow();
   if (!row) return;
-  row.appendChild(buildButton());
+  const btn = buildButton();
+  const bg = nativeButtonBg();
+  if (bg) btn.style.backgroundColor = bg;
+  row.appendChild(btn);
 }
 
 // Re-inject on initial load, on YouTube SPA navigation, and whenever the
