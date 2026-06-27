@@ -32,10 +32,14 @@ const seekKnob = document.getElementById("seek-knob");
 const curTimeEl = document.getElementById("cur-time");
 const durTimeEl = document.getElementById("dur-time");
 
+const MAX_LINES = 4; // caption box packs words up to this many lines per page
+
 // State
 let player = null;
 let phrases = [];
-let phraseWords = []; // phraseWords[pi] = [{ start, text }]
+let allWords = []; // flat [{ start, text }] in playback order
+let pages = []; // [{ start, end }] word-index ranges that fill the box
+let pageOfWord = []; // pageOfWord[wordIndex] = page index
 let mode = "flow"; // 'flow' | 'phrase'
 let volume = 100; // 0..100
 let muted = false;
@@ -44,8 +48,8 @@ let ready = false;
 let seeking = false;
 let hideTimer = null;
 // render cache
-let lastPi = -1;
-let lastRevealed = -1;
+let lastPage = -1;
+let lastWi = -1;
 let lastMode = "";
 
 function showStatus(msg) {
@@ -69,23 +73,23 @@ async function loadTranscript() {
       return false;
     }
 
-    // Build per-phrase word lists. Use real word timing when present;
-    // otherwise spread each phrase's words evenly across its duration so
-    // flow mode still works.
-    phraseWords = phrases.map(() => []);
+    // Flatten to a single word stream. Use real word timing when present;
+    // otherwise spread each phrase's words evenly across its duration so flow
+    // mode still works.
+    allWords = [];
     if (data.hasWordTiming && (data.words || []).length) {
-      for (const w of data.words) {
-        (phraseWords[w.p] ||= []).push({ start: w.start, text: w.text });
-      }
+      allWords = data.words.map((w) => ({ start: w.start, text: w.text }));
     } else {
-      phrases.forEach((p, pi) => {
+      for (const p of phrases) {
         const toks = p.text.split(/\s+/).filter(Boolean);
         const dur = p.dur > 0 ? p.dur : toks.length * 0.3;
-        phraseWords[pi] = toks.map((t, k) => ({
-          start: p.start + (dur * k) / Math.max(1, toks.length),
-          text: t,
-        }));
-      });
+        toks.forEach((t, k) =>
+          allWords.push({
+            start: p.start + (dur * k) / Math.max(1, toks.length),
+            text: t,
+          })
+        );
+      }
     }
     return true;
   } catch (err) {
@@ -112,40 +116,78 @@ function lastIndexBefore(arr, now, key = "start") {
   return result;
 }
 
+// Group all words into pages that each fill the caption box (up to MAX_LINES).
+// Measured against an offscreen probe matching the caption's width and font.
+function computePages() {
+  pages = [];
+  pageOfWord = [];
+  if (!allWords.length) return;
+
+  const probe = document.createElement("div");
+  probe.className = "caption";
+  probe.style.position = "absolute";
+  probe.style.visibility = "hidden";
+  probe.style.left = "-9999px";
+  probe.style.top = "0";
+  probe.style.width = `${stageEl.clientWidth}px`;
+  document.body.appendChild(probe);
+
+  const lineH = parseFloat(getComputedStyle(probe).lineHeight) || 60;
+  const maxH = lineH * MAX_LINES + lineH * 0.15;
+
+  let start = 0;
+  for (let i = 0; i < allWords.length; i++) {
+    const span = document.createElement("span");
+    span.className = "word";
+    span.textContent = allWords[i].text + " ";
+    probe.appendChild(span);
+    if (probe.scrollHeight > maxH && i > start) {
+      // This word overflows the box → it begins the next page.
+      probe.removeChild(span);
+      pages.push({ start, end: i - 1 });
+      start = i;
+      probe.innerHTML = "";
+      probe.appendChild(span);
+    }
+  }
+  pages.push({ start, end: allWords.length - 1 });
+  document.body.removeChild(probe);
+
+  pages.forEach((p, idx) => {
+    for (let i = p.start; i <= p.end; i++) pageOfWord[i] = idx;
+  });
+}
+
 function renderStage(now) {
-  if (!phrases.length) return;
-  const pi = Math.max(0, lastIndexBefore(phrases, now));
-  const pw = phraseWords[pi] || [];
+  if (!allWords.length || !pages.length) return;
 
-  // How many words are revealed. In flow mode this grows with the audio; in
-  // phrase mode the whole phrase is shown at once.
-  const revealed =
-    mode === "flow" ? pw.filter((w) => w.start <= now).length || 1 : pw.length;
+  const wi = lastIndexBefore(allWords, now); // current spoken word, -1 before start
+  const curWi = Math.max(0, wi);
+  const pageIdx = pageOfWord[curWi] ?? 0;
+  const page = pages[pageIdx];
 
-  if (pi === lastPi && revealed === lastRevealed && mode === lastMode) return;
-  const grew = pi === lastPi && mode === lastMode && revealed > lastRevealed;
-  lastPi = pi;
-  lastRevealed = revealed;
+  if (pageIdx === lastPage && wi === lastWi && mode === lastMode) return;
+  const grew = pageIdx === lastPage && mode === lastMode && wi > lastWi;
+  lastPage = pageIdx;
+  lastWi = wi;
   lastMode = mode;
 
-  // Always render the full phrase; hide not-yet-spoken words (space reserved)
-  // so the caption keeps a stable multi-line shape instead of reflowing.
+  // Render the whole page so the box keeps a stable shape; in flow mode the
+  // not-yet-spoken words are invisible (space reserved) and reveal as spoken.
   stageEl.innerHTML = "";
-  for (let i = 0; i < pw.length; i++) {
+  for (let i = page.start; i <= page.end; i++) {
     const span = document.createElement("span");
-    const shown = mode === "phrase" || i < revealed;
+    const shown = mode === "phrase" || i <= wi;
     span.className =
-      "word" + (shown ? "" : " hidden") + (grew && i === revealed - 1 ? " new" : "");
-    // Trailing space is a real line-break opportunity — without it the words
-    // run together as one unbreakable line that overflows.
-    span.textContent = pw[i].text + " ";
+      "word" + (shown ? "" : " hidden") + (grew && i === wi ? " new" : "");
+    span.textContent = allWords[i].text + " ";
     stageEl.appendChild(span);
   }
 }
 
 function rerender() {
-  lastPi = -1;
-  lastRevealed = -1;
+  lastPage = -1;
+  lastWi = -1;
   lastMode = "";
   if (player && ready) renderStage(player.getCurrentTime());
 }
@@ -373,10 +415,22 @@ async function onPlayerReady() {
   speedBtn.textContent = `${player.getPlaybackRate()}×`;
   setTitle();
   ready = true;
+  computePages();
   rerender();
   wake();
   setInterval(tick, 100);
 }
+
+// Re-pack pages when the viewport (and thus the box width/font) changes.
+let resizeTimer = null;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (!ready) return;
+    computePages();
+    rerender();
+  }, 200);
+});
 
 function onStateChange(e) {
   const playing = e.data === YT.PlayerState.PLAYING;
