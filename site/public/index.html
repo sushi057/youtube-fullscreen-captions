@@ -3,101 +3,99 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Caption Mode</title>
+    <title>Caption Player</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@300;400&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <!-- The YouTube player lives here but is visually hidden; only audio matters. -->
+    <!-- Hidden YouTube player (audio only). -->
     <div id="player"></div>
 
-    <!-- Scrolling caption lines render here. -->
-    <div id="captions"></div>
-
-    <!-- Status / error messages (no video id, no captions, loading). -->
-    <div id="status" class="status"></div>
-
-    <!-- Blurred overlay shown whenever playback is paused / not started. -->
-    <div id="overlay" class="overlay">
-      <div class="overlay-btn" id="overlay-btn">
-        <svg class="icon-play" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M7 4.5v15l13-7.5z" />
-        </svg>
-        <svg class="icon-pause" viewBox="0 0 24 24" aria-hidden="true">
-          <rect x="6" y="4.5" width="4.2" height="15" rx="1" />
-          <rect x="13.8" y="4.5" width="4.2" height="15" rx="1" />
-        </svg>
+    <!-- Top title bar. -->
+    <div id="mode-badge" class="mode-badge">
+      <div class="title-line">
+        <span class="dot"></span><span id="title">Caption Player</span>
       </div>
+      <div id="author" class="author"></div>
     </div>
 
-    <!-- Bottom media-player control panel. -->
-    <div id="controls" class="player">
-      <!-- Secondary options: caption mode, speed, volume. -->
-      <div class="player-extra">
-        <button id="mode-toggle" class="ctrl-btn" type="button" disabled>
-          Phrase
-        </button>
-        <label class="ctrl">
-          <span class="ctrl-label">Speed</span>
-          <select id="speed">
-            <option value="0.5">0.5×</option>
-            <option value="0.75">0.75×</option>
-            <option value="1" selected>1×</option>
-            <option value="1.25">1.25×</option>
-            <option value="1.5">1.5×</option>
-            <option value="1.75">1.75×</option>
-            <option value="2">2×</option>
-          </select>
-        </label>
-        <label class="ctrl vol">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M4 9v6h4l5 5V4L8 9H4z" />
-          </svg>
-          <input id="volume" type="range" min="0" max="100" value="100" />
-        </label>
-      </div>
+    <!-- Caption stage. -->
+    <div id="stage" class="stage">
+      <div id="caption" class="caption"></div>
+    </div>
 
-      <!-- Seek bar. -->
-      <div class="seek-row">
-        <span id="cur-time" class="time">0:00</span>
-        <input id="seek" type="range" min="0" max="1000" value="0" step="1" />
-        <span id="dur-time" class="time">0:00</span>
-      </div>
+    <!-- Status / error messages. -->
+    <div id="status" class="status"></div>
 
-      <!-- Transport buttons. -->
-      <div class="btn-row">
-        <button id="like" class="iconbtn" type="button" aria-label="Like">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+    <!-- Control bar. -->
+    <div id="controls" class="controls">
+      <div class="scrim"></div>
+      <div class="bar">
+        <!-- Play / Pause -->
+        <button id="playpause" class="ico-btn" type="button" aria-label="Play/Pause">
+          <svg class="icon-pause" width="34" height="34" viewBox="0 0 24 24" fill="currentColor">
+            <rect x="5.5" y="4" width="4.2" height="16" rx="1"></rect>
+            <rect x="14.3" y="4" width="4.2" height="16" rx="1"></rect>
+          </svg>
+          <svg class="icon-play" width="34" height="34" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M6 3.8c0-.95 1.03-1.54 1.85-1.06l13.2 7.7c.82.48.82 1.66 0 2.14l-13.2 7.7C7.03 20.76 6 20.17 6 19.22V3.8z"></path>
           </svg>
         </button>
-        <button id="prev" class="iconbtn" type="button" aria-label="Back 10 seconds">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M6 6h2v12H6zM20 6v12L9.5 12z" />
+
+        <!-- Seek bar -->
+        <div class="seek-wrap">
+          <span id="cur-time" class="time">0:00</span>
+          <div id="seek-track" class="seek-track">
+            <div class="seek-bg"></div>
+            <div id="seek-fill" class="seek-fill"></div>
+            <div id="seek-knob" class="seek-knob"></div>
+          </div>
+          <span id="dur-time" class="time">0:00</span>
+        </div>
+
+        <!-- Caption mode toggle -->
+        <button id="mode-toggle" class="pill-btn" type="button" aria-label="Caption mode">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M3 5.5A2.5 2.5 0 0 1 5.5 3h13A2.5 2.5 0 0 1 21 5.5v9A2.5 2.5 0 0 1 18.5 17H8.7l-3.5 3.2c-.64.58-1.7.13-1.7-.74V5.5zm4.6 4.2c-1.05 0-1.7.72-1.7 1.8s.65 1.8 1.7 1.8c.66 0 1.13-.25 1.45-.7l-.86-.5c-.13.18-.32.28-.57.28-.42 0-.7-.33-.7-.88s.28-.88.7-.88c.25 0 .44.1.57.28l.86-.5c-.32-.45-.79-.7-1.45-.7zm5 0c-1.05 0-1.7.72-1.7 1.8s.65 1.8 1.7 1.8c.66 0 1.13-.25 1.45-.7l-.86-.5c-.13.18-.32.28-.57.28-.42 0-.7-.33-.7-.88s.28-.88.7-.88c.25 0 .44.1.57.28l.86-.5c-.32-.45-.79-.7-1.45-.7z"></path>
           </svg>
+          <span id="mode-label">Flow</span>
         </button>
-        <button id="playpause" class="iconbtn big" type="button" aria-label="Play or pause">
-          <svg class="icon-play" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M8 5v14l11-7z" />
-          </svg>
-          <svg class="icon-pause" viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="7" y="5" width="3.6" height="14" rx="1" />
-            <rect x="13.4" y="5" width="3.6" height="14" rx="1" />
-          </svg>
-        </button>
-        <button id="next" class="iconbtn" type="button" aria-label="Forward 10 seconds">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M16 6h2v12h-2zM4 6l10.5 6L4 18z" />
-          </svg>
-        </button>
-        <button id="loop" class="iconbtn" type="button" aria-label="Loop">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z" />
+
+        <!-- Speed -->
+        <div class="speed-wrap">
+          <div id="speed-menu" class="speed-menu hidden"></div>
+          <button id="speed-btn" class="speed-btn" type="button" aria-label="Playback speed">1×</button>
+        </div>
+
+        <!-- Volume -->
+        <div class="vol-wrap">
+          <button id="mute" class="ico-btn small" type="button" aria-label="Mute">
+            <svg class="icon-muted" width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M11 4.5c0-.86-1.02-1.32-1.66-.74L5.4 7.2H3.2c-.66 0-1.2.54-1.2 1.2v7.2c0 .66.54 1.2 1.2 1.2h2.2l3.94 3.44c.64.58 1.66.12 1.66-.74V4.5z"></path>
+              <path d="M14.3 9.3a1 1 0 0 1 1.4 0L17.5 11l1.8-1.8a1 1 0 1 1 1.4 1.4L18.9 12.4l1.8 1.8a1 1 0 0 1-1.4 1.4l-1.8-1.8-1.8 1.8a1 1 0 0 1-1.4-1.4l1.8-1.8-1.8-1.8a1 1 0 0 1 0-1.3z"></path>
+            </svg>
+            <svg class="icon-unmuted" width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M11 4.5c0-.86-1.02-1.32-1.66-.74L5.4 7.2H3.2c-.66 0-1.2.54-1.2 1.2v7.2c0 .66.54 1.2 1.2 1.2h2.2l3.94 3.44c.64.58 1.66.12 1.66-.74V4.5z"></path>
+              <path id="wave1" d="M15.5 8.2a1 1 0 0 1 1.4.1 5.5 5.5 0 0 1 0 7.4 1 1 0 1 1-1.5-1.32 3.5 3.5 0 0 0 0-4.76 1 1 0 0 1 .1-1.42z"></path>
+              <path id="wave2" d="M18 5.4a1 1 0 0 1 1.4.06 9.2 9.2 0 0 1 0 13.08 1 1 0 1 1-1.46-1.36 7.2 7.2 0 0 0 0-10.36A1 1 0 0 1 18 5.4z"></path>
+            </svg>
+          </button>
+          <div id="vol-track" class="vol-track">
+            <div class="vol-bg"></div>
+            <div id="vol-fill" class="vol-fill"></div>
+            <div id="vol-knob" class="vol-knob"></div>
+          </div>
+        </div>
+
+        <!-- Fullscreen -->
+        <button id="fullscreen" class="ico-btn" type="button" aria-label="Fullscreen">
+          <svg width="25" height="25" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M4 4h6v2.4H6.4V10H4V4zm10 0h6v6h-2.4V6.4H14V4zM4 14h2.4v3.6H10V20H4v-6zm13.6 0H20v6h-6v-2.4h3.6V14z"></path>
           </svg>
         </button>
       </div>

@@ -1,39 +1,52 @@
-// Caption Mode frontend: hidden YouTube player + large scrolling captions,
-// with phrase-level and word-for-word modes, plus playback controls.
-
-const WORDS_PAGE_PHRASES = 3; // phrases shown per word-mode page
+// Caption Player — hidden YouTube audio + large word-by-word / phrase captions.
+// Visual design ported from the Claude Design "Caption Player" component.
 
 const params = new URLSearchParams(location.search);
 const videoId = params.get("v");
 const startAt = parseInt(params.get("t"), 10) || 0;
 
-const captionsEl = document.getElementById("captions");
+const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+
+// DOM
+const stageEl = document.getElementById("caption");
 const statusEl = document.getElementById("status");
-const overlayEl = document.getElementById("overlay");
+const badgeEl = document.getElementById("mode-badge");
+const titleEl = document.getElementById("title");
+const authorEl = document.getElementById("author");
 const controlsEl = document.getElementById("controls");
-const volumeEl = document.getElementById("volume");
-const speedEl = document.getElementById("speed");
+const playPauseBtn = document.getElementById("playpause");
 const modeBtn = document.getElementById("mode-toggle");
-const seekEl = document.getElementById("seek");
+const modeLabel = document.getElementById("mode-label");
+const speedBtn = document.getElementById("speed-btn");
+const speedMenu = document.getElementById("speed-menu");
+const muteBtn = document.getElementById("mute");
+const wave1 = document.getElementById("wave1");
+const wave2 = document.getElementById("wave2");
+const volTrack = document.getElementById("vol-track");
+const volFill = document.getElementById("vol-fill");
+const volKnob = document.getElementById("vol-knob");
+const fullscreenBtn = document.getElementById("fullscreen");
+const seekTrack = document.getElementById("seek-track");
+const seekFill = document.getElementById("seek-fill");
+const seekKnob = document.getElementById("seek-knob");
 const curTimeEl = document.getElementById("cur-time");
 const durTimeEl = document.getElementById("dur-time");
-const playPauseBtn = document.getElementById("playpause");
-const prevBtn = document.getElementById("prev");
-const nextBtn = document.getElementById("next");
-const likeBtn = document.getElementById("like");
-const loopBtn = document.getElementById("loop");
 
-let loopOn = false;
-let seeking = false;
-
+// State
 let player = null;
 let phrases = [];
-let words = [];
-let phraseWords = []; // phraseWords[pi] = [{ gi, text }]
-let mode = "phrase"; // 'phrase' | 'word'
-let lastPhrase = -1;
-let lastWord = -1;
+let phraseWords = []; // phraseWords[pi] = [{ start, text }]
+let mode = "flow"; // 'flow' | 'phrase'
+let volume = 100; // 0..100
+let muted = false;
+let speedMenuOpen = false;
 let ready = false;
+let seeking = false;
+let hideTimer = null;
+// render cache
+let lastPi = -1;
+let lastRevealed = -1;
+let lastMode = "";
 
 function showStatus(msg) {
   statusEl.textContent = msg;
@@ -51,27 +64,28 @@ async function loadTranscript() {
     }
     const data = await res.json();
     phrases = data.phrases || [];
-    words = data.words || [];
     if (!phrases.length) {
       showStatus("No captions available for this video.");
       return false;
     }
 
-    // Group words by their phrase for word-mode rendering.
-    phraseWords = [];
-    words.forEach((w, gi) => {
-      (phraseWords[w.p] ||= []).push({ gi, text: w.text });
-    });
-
-    // Word-for-word is the default when the video has per-word timing.
-    if (data.hasWordTiming && words.length) {
-      mode = "word";
-      modeBtn.disabled = false;
-      modeBtn.textContent = "Word-for-word";
+    // Build per-phrase word lists. Use real word timing when present;
+    // otherwise spread each phrase's words evenly across its duration so
+    // flow mode still works.
+    phraseWords = phrases.map(() => []);
+    if (data.hasWordTiming && (data.words || []).length) {
+      for (const w of data.words) {
+        (phraseWords[w.p] ||= []).push({ start: w.start, text: w.text });
+      }
     } else {
-      mode = "phrase";
-      modeBtn.disabled = true; // no word data → can't switch
-      modeBtn.textContent = "Phrase";
+      phrases.forEach((p, pi) => {
+        const toks = p.text.split(/\s+/).filter(Boolean);
+        const dur = p.dur > 0 ? p.dur : toks.length * 0.3;
+        phraseWords[pi] = toks.map((t, k) => ({
+          start: p.start + (dur * k) / Math.max(1, toks.length),
+          text: t,
+        }));
+      });
     }
     return true;
   } catch (err) {
@@ -80,15 +94,15 @@ async function loadTranscript() {
   }
 }
 
-// --- Lookup helpers -----------------------------------------------------
+// --- Rendering ----------------------------------------------------------
 
-function lastIndexBefore(arr, now) {
+function lastIndexBefore(arr, now, key = "start") {
   let lo = 0;
   let hi = arr.length - 1;
   let result = -1;
   while (lo <= hi) {
     const mid = (lo + hi) >> 1;
-    if (arr[mid].start <= now) {
+    if (arr[mid][key] <= now) {
       result = mid;
       lo = mid + 1;
     } else {
@@ -98,63 +112,42 @@ function lastIndexBefore(arr, now) {
   return result;
 }
 
-// --- Rendering ----------------------------------------------------------
+function renderStage(now) {
+  if (!phrases.length) return;
+  const pi = Math.max(0, lastIndexBefore(phrases, now));
+  const pw = phraseWords[pi] || [];
 
-// Phrase mode: the centered three-zone scroll with context lines.
-function makePhraseLine(pi, distance) {
-  const div = document.createElement("div");
-  div.className =
-    "line " + (distance === 0 ? "current" : distance === 1 ? "near" : "far");
-  div.textContent = phrases[pi].text;
-  return div;
-}
+  // How many words are revealed. In flow mode this grows with the audio; in
+  // phrase mode the whole phrase is shown at once.
+  const revealed =
+    mode === "flow" ? pw.filter((w) => w.start <= now).length || 1 : pw.length;
 
-function renderPhrase(pi) {
-  captionsEl.className = "";
-  captionsEl.innerHTML = "";
+  if (pi === lastPi && revealed === lastRevealed && mode === lastMode) return;
+  const grew = pi === lastPi && mode === lastMode && revealed > lastRevealed;
+  lastPi = pi;
+  lastRevealed = revealed;
+  lastMode = mode;
 
-  const above = document.createElement("div");
-  above.className = "above";
-  for (let i = pi - 2; i < pi; i++) {
-    if (i < 0) continue;
-    above.appendChild(makePhraseLine(i, Math.abs(i - pi)));
-  }
-
-  const current = makePhraseLine(pi, 0);
-
-  const below = document.createElement("div");
-  below.className = "below";
-  for (let i = pi + 1; i <= pi + 2; i++) {
-    if (i >= phrases.length) continue;
-    below.appendChild(makePhraseLine(i, Math.abs(i - pi)));
-  }
-
-  captionsEl.append(above, current, below);
-}
-
-// Word mode: a left-aligned teleprompter that reveals words one at a time,
-// keeping the current phrase plus the previous two for context.
-function renderWord(wi) {
-  captionsEl.className = "word-mode";
-  captionsEl.innerHTML = "";
-  if (wi < 0) wi = 0;
-
-  // Phrases are grouped into fixed pages; a page reveals word by word, then the
-  // next page starts over from its first word.
-  const pi = words[wi] ? words[wi].p : 0;
-  const pageStart = Math.floor(pi / WORDS_PAGE_PHRASES) * WORDS_PAGE_PHRASES;
-  let startWi = wi;
-  while (startWi > 0 && words[startWi - 1].p >= pageStart) startWi--;
-
-  const flow = document.createElement("div");
-  flow.className = "wordflow";
-  for (let i = startWi; i <= wi; i++) {
+  // Always render the full phrase; hide not-yet-spoken words (space reserved)
+  // so the caption keeps a stable multi-line shape instead of reflowing.
+  stageEl.innerHTML = "";
+  for (let i = 0; i < pw.length; i++) {
     const span = document.createElement("span");
-    span.className = i === wi ? "w newword" : "w";
-    span.textContent = words[i].text + " ";
-    flow.appendChild(span);
+    const shown = mode === "phrase" || i < revealed;
+    span.className =
+      "word" + (shown ? "" : " hidden") + (grew && i === revealed - 1 ? " new" : "");
+    // Trailing space is a real line-break opportunity — without it the words
+    // run together as one unbreakable line that overflows.
+    span.textContent = pw[i].text + " ";
+    stageEl.appendChild(span);
   }
-  captionsEl.appendChild(flow);
+}
+
+function rerender() {
+  lastPi = -1;
+  lastRevealed = -1;
+  lastMode = "";
+  if (player && ready) renderStage(player.getCurrentTime());
 }
 
 function formatTime(s) {
@@ -169,120 +162,203 @@ function updateSeek(now) {
   curTimeEl.textContent = formatTime(now);
   durTimeEl.textContent = formatTime(dur);
   if (!seeking && dur > 0) {
-    seekEl.value = String(Math.round((now / dur) * 1000));
+    const pct = Math.max(0, Math.min(100, (now / dur) * 100));
+    seekFill.style.width = `${pct}%`;
+    seekKnob.style.left = `${pct}%`;
   }
 }
 
 function tick() {
   if (!player || typeof player.getCurrentTime !== "function") return;
   const now = player.getCurrentTime();
+  renderStage(now);
   updateSeek(now);
-
-  if (mode === "word") {
-    const wi = lastIndexBefore(words, now);
-    if (wi !== lastWord) {
-      lastWord = wi;
-      renderWord(wi);
-    }
-  } else {
-    const pi = Math.max(0, lastIndexBefore(phrases, now));
-    if (pi !== lastPhrase) {
-      lastPhrase = pi;
-      renderPhrase(pi);
-    }
-  }
 }
 
-function renderForTime(now) {
-  lastPhrase = -1;
-  lastWord = -1;
-  tick(); // forces a fresh render at the current position
-}
-
-// --- Playback controls --------------------------------------------------
+// --- Controls -----------------------------------------------------------
 
 function togglePlay() {
   if (!player) return;
-  const state = player.getPlayerState();
-  if (state === YT.PlayerState.PLAYING) {
-    player.pauseVideo();
-  } else {
-    player.playVideo();
+  const st = player.getPlayerState();
+  if (st === YT.PlayerState.PLAYING) player.pauseVideo();
+  else player.playVideo();
+  wake();
+}
+
+function setIdle(idle) {
+  if (idle && speedMenuOpen) return;
+  controlsEl.classList.toggle("idle", idle);
+  badgeEl.style.opacity = idle ? "0" : "0.85";
+  document.body.classList.toggle("hide-cursor", idle);
+}
+
+function wake() {
+  setIdle(false);
+  clearTimeout(hideTimer);
+  hideTimer = setTimeout(() => setIdle(true), 2600);
+}
+
+function updateVolumeUI() {
+  const eff = muted ? 0 : volume / 100;
+  const fill = eff * 104;
+  volFill.style.width = `${fill}px`;
+  volKnob.style.left = `${Math.max(0, fill - 6)}px`;
+  if (wave1) wave1.style.opacity = eff > 0.15 ? "1" : "0.25";
+  if (wave2) wave2.style.opacity = eff > 0.55 ? "1" : "0.25";
+  document.body.classList.toggle("muted", muted || volume === 0);
+}
+
+function applyVolume() {
+  if (!player) return;
+  if (muted || volume === 0) player.mute();
+  else {
+    player.unMute();
+    player.setVolume(volume);
+  }
+  updateVolumeUI();
+}
+
+function buildSpeedMenu() {
+  speedMenu.innerHTML = "";
+  const cur = player ? player.getPlaybackRate() : 1;
+  for (const v of SPEEDS) {
+    const b = document.createElement("button");
+    b.className = "speed-opt" + (v === cur ? " active" : "");
+    b.textContent = `${v}×`;
+    b.addEventListener("click", () => {
+      if (player) player.setPlaybackRate(v);
+      speedBtn.textContent = `${v}×`;
+      setSpeedMenu(false);
+      wake();
+    });
+    speedMenu.appendChild(b);
   }
 }
 
-// Click anywhere (except the control bar) toggles play/pause.
+function setSpeedMenu(open) {
+  speedMenuOpen = open;
+  speedMenu.classList.toggle("hidden", !open);
+  if (open) buildSpeedMenu();
+}
+
+function setMode(next) {
+  mode = next;
+  modeLabel.textContent = mode === "flow" ? "Flow" : "Phrase";
+  rerender();
+  wake();
+}
+
+// Show the video title + author in the top badge (available once playing).
+function setTitle() {
+  const data = player && player.getVideoData ? player.getVideoData() : null;
+  if (!data) return;
+  if (data.title) titleEl.textContent = data.title;
+  if (data.author) authorEl.textContent = data.author;
+  if (data.title) {
+    document.title = data.author ? `${data.title} — ${data.author}` : data.title;
+  }
+}
+
+// Wiring
+playPauseBtn.addEventListener("click", togglePlay);
+modeBtn.addEventListener("click", () => setMode(mode === "flow" ? "phrase" : "flow"));
+speedBtn.addEventListener("click", () => setSpeedMenu(!speedMenuOpen));
+
+muteBtn.addEventListener("click", () => {
+  muted = !muted;
+  applyVolume();
+  wake();
+});
+
+function setVolFromEvent(e) {
+  const r = volTrack.getBoundingClientRect();
+  let ratio = (e.clientX - r.left) / r.width;
+  ratio = Math.max(0, Math.min(1, ratio));
+  volume = Math.round(ratio * 100);
+  muted = ratio === 0;
+  applyVolume();
+}
+
+volTrack.addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  setVolFromEvent(e);
+  const move = (ev) => setVolFromEvent(ev);
+  const up = () => {
+    window.removeEventListener("pointermove", move);
+    window.removeEventListener("pointerup", up);
+  };
+  window.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", up);
+  wake();
+});
+
+function seekFromEvent(e) {
+  const r = seekTrack.getBoundingClientRect();
+  let ratio = (e.clientX - r.left) / r.width;
+  ratio = Math.max(0, Math.min(1, ratio));
+  const pct = ratio * 100;
+  seekFill.style.width = `${pct}%`;
+  seekKnob.style.left = `${pct}%`;
+  const dur = player ? player.getDuration() : 0;
+  if (dur > 0) curTimeEl.textContent = formatTime(ratio * dur);
+  return ratio;
+}
+
+seekTrack.addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  seeking = true;
+  let ratio = seekFromEvent(e);
+  const move = (ev) => {
+    ratio = seekFromEvent(ev);
+  };
+  const up = () => {
+    window.removeEventListener("pointermove", move);
+    window.removeEventListener("pointerup", up);
+    const dur = player ? player.getDuration() : 0;
+    if (dur > 0) {
+      player.seekTo(ratio * dur, true);
+      rerender();
+    }
+    seeking = false;
+  };
+  window.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", up);
+  wake();
+});
+
+fullscreenBtn.addEventListener("click", () => {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen?.();
+  } else {
+    document.exitFullscreen?.();
+  }
+  wake();
+});
+
+// Click anywhere (outside the control bar) toggles play/pause.
 document.addEventListener("click", (e) => {
   if (!ready) return;
   if (e.target.closest("#controls")) return;
   togglePlay();
 });
 
-volumeEl.addEventListener("input", () => {
-  if (player) player.setVolume(Number(volumeEl.value));
-});
-
-speedEl.addEventListener("change", () => {
-  if (player) player.setPlaybackRate(Number(speedEl.value));
-});
-
-modeBtn.addEventListener("click", () => {
-  if (modeBtn.disabled) return;
-  mode = mode === "word" ? "phrase" : "word";
-  modeBtn.textContent = mode === "word" ? "Word-for-word" : "Phrase";
-  renderForTime(player.getCurrentTime());
-});
-
-// Transport buttons.
-playPauseBtn.addEventListener("click", togglePlay);
-
-prevBtn.addEventListener("click", () => {
-  if (player) player.seekTo(Math.max(0, player.getCurrentTime() - 10), true);
-});
-
-nextBtn.addEventListener("click", () => {
-  if (player) player.seekTo(player.getCurrentTime() + 10, true);
-});
-
-likeBtn.addEventListener("click", () => likeBtn.classList.toggle("active"));
-
-loopBtn.addEventListener("click", () => {
-  loopOn = !loopOn;
-  loopBtn.classList.toggle("active", loopOn);
-});
-
-// Seek bar: scrub without fighting the tick loop.
-seekEl.addEventListener("input", () => {
-  seeking = true;
-  const dur = player.getDuration();
-  if (dur > 0) curTimeEl.textContent = formatTime((seekEl.value / 1000) * dur);
-});
-
-seekEl.addEventListener("change", () => {
-  const dur = player.getDuration();
-  if (dur > 0) {
-    player.seekTo((seekEl.value / 1000) * dur, true);
-    renderForTime((seekEl.value / 1000) * dur);
+document.addEventListener("keydown", (e) => {
+  if (e.code === "Space") {
+    e.preventDefault();
+    togglePlay();
   }
-  seeking = false;
 });
 
-// Auto-hide the control bar when the mouse is idle.
-let idleTimer;
-function wakeControls() {
-  controlsEl.classList.remove("idle");
-  clearTimeout(idleTimer);
-  idleTimer = setTimeout(() => controlsEl.classList.add("idle"), 2500);
-}
-document.addEventListener("mousemove", wakeControls);
+document.addEventListener("mousemove", wake);
 
-// --- YouTube IFrame player ---------------------------------------------
+// --- YouTube player -----------------------------------------------------
 
 window.onYouTubeIframeAPIReady = function () {
   if (!videoId) {
     showStatus("No video specified. Open this page from the Caption Mode button.");
     return;
   }
+  document.body.classList.add("paused");
   player = new YT.Player("player", {
     videoId,
     playerVars: { autoplay: 0, controls: 0, start: startAt, rel: 0 },
@@ -293,20 +369,17 @@ window.onYouTubeIframeAPIReady = function () {
 async function onPlayerReady() {
   const ok = await loadTranscript();
   if (!ok) return;
-  renderForTime(startAt); // show captions behind the blurred play overlay
+  applyVolume();
+  speedBtn.textContent = `${player.getPlaybackRate()}×`;
+  setTitle();
   ready = true;
-  wakeControls();
-  setInterval(tick, 120);
+  rerender();
+  wake();
+  setInterval(tick, 100);
 }
 
 function onStateChange(e) {
   const playing = e.data === YT.PlayerState.PLAYING;
-  // Overlay and play/pause icon both reflect playing vs. paused.
-  overlayEl.classList.toggle("hidden", playing);
-  controlsEl.classList.toggle("playing", playing);
-
-  if (e.data === YT.PlayerState.ENDED && loopOn) {
-    player.seekTo(0, true);
-    player.playVideo();
-  }
+  document.body.classList.toggle("paused", !playing);
+  if (playing) setTitle(); // title data is reliably present once playing
 }
