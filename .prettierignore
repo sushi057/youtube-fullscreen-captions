@@ -1,0 +1,5 @@
+node_modules
+package-lock.json
+.claude
+# hand-formatted inline SVGs; auto-wrapping hurts readability here
+site/public/index.html

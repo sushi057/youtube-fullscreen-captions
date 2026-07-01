@@ -87,12 +87,13 @@ async function loadTranscript() {
           allWords.push({
             start: p.start + (dur * k) / Math.max(1, toks.length),
             text: t,
-          })
+          }),
         );
       }
     }
     return true;
   } catch (err) {
+    console.error("transcript fetch failed:", err);
     showStatus("Couldn't load captions. Is the server running?");
     return false;
   }
@@ -179,7 +180,8 @@ function renderStage(now) {
     const span = document.createElement("span");
     const shown = mode === "phrase" || i <= wi;
     const animate = mode === "flow" && grew && i === wi;
-    span.className = "word" + (shown ? "" : " hidden") + (animate ? " new" : "");
+    span.className =
+      "word" + (shown ? "" : " hidden") + (animate ? " new" : "");
     span.textContent = allWords[i].text + " ";
     stageEl.appendChild(span);
   }
@@ -297,13 +299,17 @@ function setTitle() {
   if (data.title) titleEl.textContent = data.title;
   if (data.author) authorEl.textContent = data.author;
   if (data.title) {
-    document.title = data.author ? `${data.title} — ${data.author}` : data.title;
+    document.title = data.author
+      ? `${data.title} — ${data.author}`
+      : data.title;
   }
 }
 
 // Wiring
 playPauseBtn.addEventListener("click", togglePlay);
-modeBtn.addEventListener("click", () => setMode(mode === "flow" ? "phrase" : "flow"));
+modeBtn.addEventListener("click", () =>
+  setMode(mode === "flow" ? "phrase" : "flow"),
+);
 speedBtn.addEventListener("click", () => setSpeedMenu(!speedMenuOpen));
 
 muteBtn.addEventListener("click", () => {
@@ -397,7 +403,9 @@ document.addEventListener("mousemove", wake);
 
 window.onYouTubeIframeAPIReady = function () {
   if (!videoId) {
-    showStatus("No video specified. Open this page from the Caption Mode button.");
+    showStatus(
+      "No video specified. Open this page from the Caption Mode button.",
+    );
     return;
   }
   document.body.classList.add("paused");

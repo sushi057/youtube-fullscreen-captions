@@ -30,9 +30,7 @@ async function getCaptionTracks(videoId) {
     }),
   });
   const data = await resp.json();
-  return (
-    data?.captions?.playerCaptionsTracklistRenderer?.captionTracks || []
-  );
+  return data?.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
 }
 
 // Prefer English, and among English prefer the auto-generated ("asr") track,
@@ -51,7 +49,9 @@ function decodeEntities(text) {
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
     .replace(/&apos;/g, "'")
-    .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, h) =>
+      String.fromCodePoint(parseInt(h, 16)),
+    )
     .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(parseInt(d, 10)));
 }
 
@@ -82,7 +82,11 @@ function parseSrv3(xml) {
 
     let phraseText;
     if (segs.length) {
-      phraseText = segs.map((x) => x.text).join("").replace(/\s+/g, " ").trim();
+      phraseText = segs
+        .map((x) => x.text)
+        .join("")
+        .replace(/\s+/g, " ")
+        .trim();
     } else {
       phraseText = decodeEntities(inner.replace(/<[^>]+>/g, ""))
         .replace(/\s+/g, " ")
@@ -91,7 +95,11 @@ function parseSrv3(xml) {
     if (!phraseText) continue;
 
     const pi = phrases.length;
-    phrases.push({ start: startMs / 1000, dur: parseInt(p[2], 10) / 1000, text: phraseText });
+    phrases.push({
+      start: startMs / 1000,
+      dur: parseInt(p[2], 10) / 1000,
+      text: phraseText,
+    });
 
     for (const seg of segs) {
       const w = seg.text.replace(/\s+/g, " ").trim();

@@ -1,4 +1,4 @@
-# Caption Mode for YouTube
+# YT Blackscreen Captions
 
 Watch YouTube on a blank black screen with large, focus-friendly captions — no
 video, no distractions. A browser extension adds a **Caption Mode** button to
@@ -65,9 +65,38 @@ The extension opens `CAPTION_MODE_SITE/?v=ID&t=SECONDS`. Point it at your
 deployment by editing `CAPTION_MODE_SITE` at the top of
 `extension/content.js` (defaults to `http://localhost:3000` for development).
 
+## Deploying the site
+
+`site/Dockerfile` builds a minimal `node:22-alpine` image that runs
+`server.js`, listening on `$PORT` (defaults to `8080` in the container):
+
+```bash
+cd site
+docker build -t caption-mode-site .
+docker run -p 8080:8080 caption-mode-site
+```
+
+Deploy the resulting image to any container host (Cloud Run, Fly.io, Render,
+etc.), then point the extension's `CAPTION_MODE_SITE` at the deployed URL.
+
+## Development
+
+Linting and formatting are configured at the repo root and cover both
+`extension/` and `site/`:
+
+```bash
+npm install   # installs eslint + prettier only, no runtime deps
+npm run lint
+npm run format:check   # or `npm run format` to auto-fix
+```
+
 ## Notes / limits
 
 - Desktop YouTube only for now.
 - Word-for-word timing comes from auto-generated (`asr`) captions; videos with
   only manually-authored subtitles fall back to phrase mode.
 - The transcript source depends on YouTube's internal APIs and can change.
+
+## License
+
+[MIT](LICENSE)

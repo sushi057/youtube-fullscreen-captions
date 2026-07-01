@@ -54,7 +54,7 @@ function buildButton() {
 function findActionRow() {
   return document.querySelector(
     "ytd-watch-metadata #actions-inner #top-level-buttons-computed, " +
-    "ytd-watch-metadata #top-level-buttons-computed"
+      "ytd-watch-metadata #top-level-buttons-computed",
   );
 }
 
@@ -63,7 +63,7 @@ function findActionRow() {
 function nativeButtonBg() {
   const native = document.querySelector(
     "ytd-watch-metadata button.yt-spec-button-shape-next--tonal, " +
-    "ytd-watch-metadata .yt-spec-button-shape-next--mono.yt-spec-button-shape-next--tonal"
+      "ytd-watch-metadata .yt-spec-button-shape-next--mono.yt-spec-button-shape-next--tonal",
   );
   if (!native) return null;
   const bg = getComputedStyle(native).backgroundColor;

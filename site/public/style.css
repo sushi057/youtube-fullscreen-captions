@@ -136,7 +136,9 @@ body.hide-cursor {
   right: 0;
   bottom: 0;
   z-index: 10;
-  transition: opacity 0.35s ease, transform 0.35s ease;
+  transition:
+    opacity 0.35s ease,
+    transform 0.35s ease;
 }
 
 .controls.idle {
@@ -176,7 +178,9 @@ body.hide-cursor {
   height: 58px;
   color: #fff;
   opacity: 0.95;
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
 }
 
 .ico-btn svg {
@@ -224,7 +228,9 @@ body.paused .icon-play {
   border-radius: 7px;
   color: #fff;
   opacity: 0.9;
-  transition: opacity 0.15s ease, background 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    background 0.15s ease;
 }
 
 .pill-btn:hover {
@@ -262,7 +268,9 @@ body.paused .icon-play {
   opacity: 0.9;
   font-weight: 800;
   font-size: 18px;
-  transition: opacity 0.15s ease, background 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    background 0.15s ease;
 }
 
 .speed-btn:hover {
