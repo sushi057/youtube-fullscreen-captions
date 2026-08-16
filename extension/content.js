@@ -1,9 +1,6 @@
 // Caption Mode for YouTube — injects a launcher button into the watch-page
-// action row (next to Like / Dislike / Share) that opens the current video
-// in the Caption Mode website.
-
-// TODO: point this at your real site once it's deployed.
-const CAPTION_MODE_SITE = "http://localhost:3000";
+// action row (next to Like / Dislike / Share) that toggles the caption overlay
+// on this page.
 
 const BUTTON_ID = "caption-mode-btn";
 
@@ -11,23 +8,9 @@ function getVideoId() {
   return new URLSearchParams(window.location.search).get("v");
 }
 
-function getCurrentTime() {
-  // The page can hold several <video> tags (hover previews, mini-player, ads).
-  // The real watch-page player is the one inside #movie_player.
-  const video =
-    document.querySelector("#movie_player video.html5-main-video") ||
-    document.querySelector("#movie_player video");
-  if (!video || !isFinite(video.currentTime)) return 0;
-  return Math.floor(video.currentTime);
-}
-
 function openCaptionMode() {
-  const videoId = getVideoId();
-  if (!videoId) return;
-  const url = new URL(CAPTION_MODE_SITE);
-  url.searchParams.set("v", videoId);
-  url.searchParams.set("t", String(getCurrentTime()));
-  window.open(url.toString(), "_blank", "noopener");
+  if (!getVideoId()) return;
+  CaptionOverlay.toggle();
 }
 
 function buildButton() {

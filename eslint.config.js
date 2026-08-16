@@ -9,11 +9,16 @@ const browserGlobals = {
   setTimeout: "readonly",
   clearTimeout: "readonly",
   setInterval: "readonly",
+  clearInterval: "readonly",
   MutationObserver: "readonly",
   getComputedStyle: "readonly",
   isFinite: "readonly",
   YT: "readonly",
   CaptionView: "readonly",
+  CaptionOverlay: "readonly",
+  CAPTION_MODE_CONFIG: "readonly",
+  chrome: "readonly",
+  navigator: "readonly",
 };
 
 const nodeGlobals = {

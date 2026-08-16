@@ -1,0 +1,116 @@
+/* The black layer. Opaque, above everything YouTube draws, and covering the
+   whole page — the video keeps playing and decoding underneath. */
+#caption-mode-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  background: #000;
+  color: #fff;
+  font-family: "Archivo", "Roboto", "Helvetica Neue", Helvetica, sans-serif;
+  user-select: none;
+  cursor: default;
+}
+
+body.cm-open {
+  overflow: hidden;
+}
+
+#caption-mode-overlay .cm-badge {
+  position: absolute;
+  top: 34px;
+  left: 46px;
+  opacity: 0.85;
+  transition: opacity 0.35s ease;
+}
+
+#caption-mode-overlay .cm-title-line {
+  display: flex;
+  align-items: center;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+#caption-mode-overlay .cm-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff;
+  margin-right: 11px;
+  flex: none;
+}
+
+#caption-mode-overlay .cm-author {
+  margin-top: 4px;
+  margin-left: 18px;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+#caption-mode-overlay .cm-stage {
+  position: absolute;
+  top: 18%;
+  left: 8vw;
+  width: 70vw;
+  bottom: 16vh;
+  display: flex;
+  align-items: flex-start;
+}
+
+#caption-mode-overlay .cm-caption {
+  width: 100%;
+  font-size: clamp(2.6rem, 6vw, 7rem);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  color: #fff;
+  text-wrap: pretty;
+  overflow-wrap: normal;
+}
+
+#caption-mode-overlay .word {
+  display: inline;
+  transition: opacity 0.16s ease;
+}
+
+/* Not-yet-spoken words stay invisible but keep their space, so the block holds
+   a stable multi-line shape instead of reflowing as words appear. */
+#caption-mode-overlay .word.hidden {
+  opacity: 0;
+}
+
+#caption-mode-overlay .word:hover {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-thickness: 0.06em;
+  text-underline-offset: 0.12em;
+  text-decoration-color: rgba(255, 255, 255, 0.45);
+}
+
+#caption-mode-overlay .word.hidden:hover {
+  text-decoration: none;
+}
+
+#caption-mode-overlay .word.found {
+  background: rgba(255, 214, 102, 0.28);
+  border-radius: 0.06em;
+  box-shadow: 0 0 0 0.06em rgba(255, 214, 102, 0.28);
+}
+
+#caption-mode-overlay .cm-status {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 8vw;
+  text-align: center;
+  font-size: clamp(1.1rem, 3vw, 1.6rem);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+#caption-mode-overlay .cm-status.visible {
+  display: flex;
+}
