@@ -10,6 +10,7 @@
         "vendor/transcript-classic.js",
         "caption-view.js",
         "overlay.js",
+        "intent.js",
         "content.js"
       ],
       "css": ["content.css", "overlay.css"],

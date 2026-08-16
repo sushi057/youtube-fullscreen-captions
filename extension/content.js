@@ -41,16 +41,25 @@ function findActionRow() {
   );
 }
 
-// Read the exact background color of a real YouTube tonal button so ours
-// matches precisely, whatever the theme/version resolves it to.
-function nativeButtonBg() {
+// Copy the resolved look of a real YouTube tonal button onto ours, whatever
+// the theme/version resolves it to. The pills carry a subtle vertical gradient
+// in background-image, so the background color alone is not enough: it leaves
+// our pill flat and darker at the top than its neighbours.
+function styleLikeNativeButton(btn) {
   const native = document.querySelector(
     "ytd-watch-metadata button.yt-spec-button-shape-next--tonal, " +
       "ytd-watch-metadata .yt-spec-button-shape-next--mono.yt-spec-button-shape-next--tonal",
   );
-  if (!native) return null;
-  const bg = getComputedStyle(native).backgroundColor;
-  return bg && bg !== "rgba(0, 0, 0, 0)" ? bg : null;
+  if (!native) return;
+  const style = getComputedStyle(native);
+  const bg = style.backgroundColor;
+  if (bg && bg !== "rgba(0, 0, 0, 0)") btn.style.backgroundColor = bg;
+  if (style.backgroundImage && style.backgroundImage !== "none") {
+    btn.style.backgroundImage = style.backgroundImage;
+  }
+  // Match the pill geometry too, so ours lines up with the row.
+  if (style.height) btn.style.height = style.height;
+  if (style.borderRadius) btn.style.borderRadius = style.borderRadius;
 }
 
 function injectButton() {
@@ -59,9 +68,24 @@ function injectButton() {
   const row = findActionRow();
   if (!row) return;
   const btn = buildButton();
-  const bg = nativeButtonBg();
-  if (bg) btn.style.backgroundColor = bg;
+  styleLikeNativeButton(btn);
   row.appendChild(btn);
+}
+
+// The feed page leaves a note when the user clicks Caption Mode on a
+// thumbnail. Chrome does not re-inject content scripts on YouTube's own SPA
+// navigations, so that click is always a full page load, and this runs once as
+// the watch page comes up.
+function openIfRequested() {
+  const id = getVideoId();
+  if (!id) return;
+  let store = null;
+  try {
+    store = window.sessionStorage;
+  } catch {
+    return; // storage blocked; the user simply lands on the normal page
+  }
+  if (CaptionIntent.take(store, id)) CaptionOverlay.toggle();
 }
 
 // Re-inject on initial load, on YouTube SPA navigation, and whenever the
@@ -70,6 +94,7 @@ function start() {
   injectButton();
   // Warm the transcript before anyone asks for it, so opening is instant.
   CaptionOverlay.prefetch();
+  openIfRequested();
 
   document.addEventListener("yt-navigate-finish", () => {
     CaptionOverlay.prefetch();
