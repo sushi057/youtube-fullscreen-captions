@@ -9,7 +9,7 @@ const CaptionOverlay = (() => {
   const ROOT_ID = "caption-mode-overlay";
   const MAX_LINES = 4;
   const TICK_MS = 100;
-  const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+  const SPEEDS = [1, 1.25, 1.75, 2];
 
   const FAILURE_MESSAGES = {
     no_transcript: "This video has no captions.",
@@ -27,11 +27,11 @@ const CaptionOverlay = (() => {
   let mode = "flow";
   let timer = null;
   let foundWord = -1;
-  let speedMenuOpen = false;
   let seeking = false;
   let hideTimer = null;
   let matches = [];
   let matchAt = -1;
+  let videoListeners = null;
   // render cache
   let lastPage = -1;
   let lastWi = -1;
@@ -78,10 +78,10 @@ const CaptionOverlay = (() => {
             <svg class="cm-icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
           </button>
           <button class="cm-ico cm-back" type="button" aria-label="Back 10 seconds">
-            <svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/><path d="M10.9 16H10v-3.3L9 13v-.7l1.8-.6h.1V16zm4.68-1.34c0 .35-.04.65-.11.9s-.18.46-.32.62-.3.27-.5.34-.41.1-.65.1-.45-.03-.65-.1-.37-.19-.51-.34-.25-.36-.33-.62-.12-.55-.12-.9v-.74c0-.35.04-.65.11-.9s.18-.46.32-.62.3-.27.5-.34.42-.1.66-.1.45.03.65.1.37.19.51.34.25.36.33.62.12.55.12.9v.74zm-.85-.86c0-.21-.01-.39-.04-.53s-.07-.26-.13-.35-.13-.15-.21-.19-.19-.06-.3-.06-.21.02-.3.06-.16.1-.22.19-.1.21-.13.35-.04.32-.04.53v.97c0 .21.01.39.04.54s.07.26.13.35.13.16.22.2.19.06.3.06.21-.02.3-.06.16-.1.21-.2.1-.21.12-.35.04-.33.04-.54v-.97z"/></svg>
           </button>
           <button class="cm-ico cm-fwd" type="button" aria-label="Forward 10 seconds">
-            <svg viewBox="0 0 24 24"><path d="M12 5V1l5 5-5 5V7a6 6 0 1 0 6 6h2a8 8 0 1 1-8-8z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 5V1l5 5-5 5V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8z"/><path d="M10.9 16H10v-3.3L9 13v-.7l1.8-.6h.1V16zm4.68-1.34c0 .35-.04.65-.11.9s-.18.46-.32.62-.3.27-.5.34-.41.1-.65.1-.45-.03-.65-.1-.37-.19-.51-.34-.25-.36-.33-.62-.12-.55-.12-.9v-.74c0-.35.04-.65.11-.9s.18-.46.32-.62.3-.27.5-.34.42-.1.66-.1.45.03.65.1.37.19.51.34.25.36.33.62.12.55.12.9v.74zm-.85-.86c0-.21-.01-.39-.04-.53s-.07-.26-.13-.35-.13-.15-.21-.19-.19-.06-.3-.06-.21.02-.3.06-.16.1-.22.19-.1.21-.13.35-.04.32-.04.53v.97c0 .21.01.39.04.54s.07.26.13.35.13.16.22.2.19.06.3.06.21-.02.3-.06.16-.1.21-.2.1-.21.12-.35.04-.33.04-.54v-.97z"/></svg>
           </button>
           <div class="cm-seek-wrap">
             <span class="cm-cur-time">0:00</span>
@@ -96,10 +96,7 @@ const CaptionOverlay = (() => {
             <svg viewBox="0 0 24 24"><path d="M19 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm-8 7H9.5v-.5h-2v3h2V13H11v1a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v1zm7 0h-1.5v-.5h-2v3h2V13H18v1a1 1 0 0 1-1 1h-3a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v1z"/></svg>
             <span class="cm-mode-label">Flow</span>
           </button>
-          <div class="cm-speed-wrap">
-            <div class="cm-speed-menu hidden"></div>
-            <button class="cm-speed-btn" type="button" aria-label="Playback speed">1&times;</button>
-          </div>
+          <button class="cm-speed-btn" type="button" aria-label="Playback speed">1&times;</button>
           <div class="cm-vol-wrap">
             <button class="cm-ico cm-small cm-mute" type="button" aria-label="Mute">
               <svg viewBox="0 0 24 24">
@@ -358,7 +355,6 @@ const CaptionOverlay = (() => {
   }
 
   function setIdle(idle) {
-    if (idle && speedMenuOpen) return;
     root.querySelector(".cm-controls").classList.toggle("idle", idle);
     root.querySelector(".cm-badge").style.opacity = idle ? "0" : "0.85";
     // The way out dims but never disappears, unlike the rest of the chrome.
@@ -399,29 +395,18 @@ const CaptionOverlay = (() => {
     root.classList.toggle("cm-paused", video.paused);
   }
 
-  function buildSpeedMenu() {
-    const menu = root.querySelector(".cm-speed-menu");
-    menu.innerHTML = "";
-    for (const v of SPEEDS) {
-      const b = document.createElement("button");
-      b.className =
-        "cm-speed-opt" + (v === video.playbackRate ? " active" : "");
-      b.textContent = `${v}×`;
-      b.addEventListener("click", (e) => {
-        e.stopPropagation();
-        video.playbackRate = v;
-        root.querySelector(".cm-speed-btn").textContent = `${v}×`;
-        setSpeedMenu(false);
-        wake();
-      });
-      menu.appendChild(b);
-    }
-  }
-
-  function setSpeedMenu(open) {
-    speedMenuOpen = open;
-    root.querySelector(".cm-speed-menu").classList.toggle("hidden", !open);
-    if (open) buildSpeedMenu();
+  // One button that steps through the speeds, rather than a menu to open and
+  // aim at. A rate YouTube set that is not on the list rounds up to the next
+  // one, so the button never appears stuck.
+  function cycleSpeed() {
+    const at = SPEEDS.indexOf(video.playbackRate);
+    const next =
+      at === -1
+        ? (SPEEDS.find((s) => s > video.playbackRate) ?? SPEEDS[0])
+        : SPEEDS[(at + 1) % SPEEDS.length];
+    video.playbackRate = next;
+    updateSpeedLabel();
+    wake();
   }
 
   function setMode(next) {
@@ -437,6 +422,58 @@ const CaptionOverlay = (() => {
     return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
   }
 
+  // Buttons and keys drive the same three steps, so they can never disagree.
+  function nudgeTime(seconds) {
+    const dur = video.duration || 0;
+    video.currentTime = Math.max(
+      0,
+      Math.min(dur || Infinity, video.currentTime + seconds),
+    );
+    rerender();
+    wake();
+  }
+
+  function nudgeVolume(delta) {
+    video.volume = Math.max(0, Math.min(1, video.volume + delta));
+    if (video.volume > 0) video.muted = false;
+    updateVolumeUI();
+    wake();
+  }
+
+  function toggleMute() {
+    video.muted = !video.muted;
+    updateVolumeUI();
+    wake();
+  }
+
+  function updateSpeedLabel() {
+    root.querySelector(".cm-speed-btn").textContent = `${video.playbackRate}×`;
+  }
+
+  // YouTube's own player also changes this video: its controls still work
+  // underneath, ads start and end, and it restores volume. Listening to the
+  // element keeps the overlay honest instead of guessing between ticks.
+  function followVideo() {
+    const sync = () => {
+      if (!root) return;
+      updateSeek();
+      updateVolumeUI();
+      updateSpeedLabel();
+    };
+    for (const ev of [
+      "play",
+      "pause",
+      "volumechange",
+      "ratechange",
+      "seeked",
+      "durationchange",
+      "loadedmetadata",
+    ]) {
+      video.addEventListener(ev, sync);
+    }
+    videoListeners = sync;
+  }
+
   function wireControls() {
     const on = (sel, ev, fn) =>
       root.querySelector(sel).addEventListener(ev, (e) => {
@@ -448,23 +485,11 @@ const CaptionOverlay = (() => {
     // its own way out. Escape works too, and the button says so.
     on(".cm-exit", "click", close);
     on(".cm-playpause", "click", togglePlay);
-    on(".cm-back", "click", () => {
-      video.currentTime = Math.max(0, video.currentTime - 10);
-      rerender();
-      wake();
-    });
-    on(".cm-fwd", "click", () => {
-      video.currentTime = Math.min(video.duration || 0, video.currentTime + 10);
-      rerender();
-      wake();
-    });
+    on(".cm-back", "click", () => nudgeTime(-10));
+    on(".cm-fwd", "click", () => nudgeTime(10));
     on(".cm-mode", "click", () => setMode(mode === "flow" ? "phrase" : "flow"));
-    on(".cm-speed-btn", "click", () => setSpeedMenu(!speedMenuOpen));
-    on(".cm-mute", "click", () => {
-      video.muted = !video.muted;
-      updateVolumeUI();
-      wake();
-    });
+    on(".cm-speed-btn", "click", cycleSpeed);
+    on(".cm-mute", "click", toggleMute);
     on(".cm-fullscreen", "click", () => {
       if (!document.fullscreenElement) root.requestFullscreen?.();
       else document.exitFullscreen?.();
@@ -536,7 +561,12 @@ const CaptionOverlay = (() => {
     wireSearch();
     wireShare();
     updateVolumeUI();
-    root.querySelector(".cm-speed-btn").textContent = `${video.playbackRate}×`;
+    updateSpeedLabel();
+    // Paint the controls now. They used to wait for the render timer, which
+    // starts only after the transcript loads, so the play icon showed the
+    // wrong state at first and never updated at all if the fetch failed.
+    updateSeek();
+    followVideo();
     wake();
 
     const ok = await loadTranscript();
@@ -553,6 +583,20 @@ const CaptionOverlay = (() => {
     if (!root) return;
     clearTimeout(hideTimer);
     clearInterval(timer);
+    if (videoListeners) {
+      for (const ev of [
+        "play",
+        "pause",
+        "volumechange",
+        "ratechange",
+        "seeked",
+        "durationchange",
+        "loadedmetadata",
+      ]) {
+        video.removeEventListener(ev, videoListeners);
+      }
+      videoListeners = null;
+    }
     timer = null;
     root.remove();
     root = null;
@@ -592,12 +636,22 @@ const CaptionOverlay = (() => {
       setSearch(true);
       return;
     }
-    if (e.code === "Space" && !e.target.closest("input")) {
-      e.preventDefault();
-      e.stopPropagation(); // YouTube also listens for Space
-      if (video.paused) video.play();
-      else video.pause();
-    }
+    if (e.target.closest("input")) return; // typing owns the keyboard
+
+    // YouTube binds most of these too, so each one is stopped here.
+    const keys = {
+      Space: togglePlay,
+      ArrowLeft: () => nudgeTime(-10),
+      ArrowRight: () => nudgeTime(10),
+      ArrowUp: () => nudgeVolume(0.05),
+      ArrowDown: () => nudgeVolume(-0.05),
+      KeyM: toggleMute,
+    };
+    const action = keys[e.code];
+    if (!action) return;
+    e.preventDefault();
+    e.stopPropagation();
+    action();
   });
 
   // Escape leaves. The overlay never pauses on the way out, so toggling it
