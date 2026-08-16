@@ -14,6 +14,9 @@ const root = join(__dirname, "..");
 const COPIES = [
   ["transcript-core/transcript.js", "extension/vendor/transcript.js"],
   ["transcript-core/transcript.js", "site/lib/transcript.js"],
+  // The extension holds the source for this one, because it loads the file
+  // directly and the site only copies it.
+  ["extension/caption-view.js", "site/public/caption-view.js"],
 ];
 
 const BANNER =

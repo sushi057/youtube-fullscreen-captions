@@ -13,9 +13,12 @@ const browserGlobals = {
   getComputedStyle: "readonly",
   isFinite: "readonly",
   YT: "readonly",
+  CaptionView: "readonly",
 };
 
 const nodeGlobals = {
+  URL: "readonly",
+  URLSearchParams: "readonly",
   require: "readonly",
   module: "readonly",
   process: "readonly",
