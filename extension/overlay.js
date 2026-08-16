@@ -678,6 +678,27 @@ const CaptionOverlay = (() => {
     });
   }
 
+  // --- Fullscreen -------------------------------------------------------
+
+  // Fullscreen paints only the fullscreen element's subtree. The overlay is a
+  // child of <body>, so if YouTube takes fullscreen on #movie_player the
+  // captions stop being drawn — fixed position and a maximal z-index make no
+  // difference. So the overlay must be the element that goes fullscreen.
+  function toggleFullscreen() {
+    if (document.fullscreenElement === root) document.exitFullscreen?.();
+    else root.requestFullscreen?.().catch(() => {});
+    wake();
+  }
+
+  // If something else takes fullscreen while the overlay is open — YouTube's
+  // own shortcut reaching the page another way — leave it, so the reader gets
+  // the captions back instead of staring at a video they cannot see past.
+  document.addEventListener("fullscreenchange", () => {
+    if (!root) return;
+    const fs = document.fullscreenElement;
+    if (fs && fs !== root && !root.contains(fs)) document.exitFullscreen?.();
+  });
+
   // Buttons and keys drive the same three steps, so they can never disagree.
   function nudgeTime(seconds) {
     const dur = video.duration || 0;
@@ -750,11 +771,7 @@ const CaptionOverlay = (() => {
       setPanel(root.querySelector(".cm-panel").classList.contains("hidden")),
     );
     on(".cm-mute", "click", toggleMute);
-    on(".cm-fullscreen", "click", () => {
-      if (!document.fullscreenElement) root.requestFullscreen?.();
-      else document.exitFullscreen?.();
-      wake();
-    });
+    on(".cm-fullscreen", "click", toggleFullscreen);
 
     const volTrack = root.querySelector(".cm-vol-track");
     volTrack.addEventListener("pointerdown", (e) => {
@@ -852,6 +869,7 @@ const CaptionOverlay = (() => {
   function close() {
     if (!root) return;
     savePosition();
+    if (document.fullscreenElement === root) document.exitFullscreen?.();
     clearTimeout(hideTimer);
     clearInterval(timer);
     if (videoListeners) {
@@ -900,41 +918,60 @@ const CaptionOverlay = (() => {
     }
   });
 
-  document.addEventListener("keydown", (e) => {
-    if (!root) return;
-    if (e.key === "/" && !e.target.closest("input")) {
-      e.preventDefault();
-      e.stopPropagation();
-      setSearch(true);
-      return;
-    }
-    if (e.target.closest("input")) return; // typing owns the keyboard
+  // keydown targets are not always Elements, so closest() needs a guard.
+  const inTextField = (target) =>
+    target instanceof Element && target.closest("input, textarea");
 
-    // YouTube binds most of these too, so each one is stopped here.
-    const keys = {
-      Space: togglePlay,
-      ArrowLeft: () => nudgeTime(-10),
-      ArrowRight: () => nudgeTime(10),
-      ArrowUp: () => nudgeVolume(0.05),
-      ArrowDown: () => nudgeVolume(-0.05),
-      KeyM: toggleMute,
-    };
-    const action = keys[e.code];
-    if (!action) return;
-    e.preventDefault();
-    e.stopPropagation();
-    action();
-  });
+  // Capture phase on window, so this runs before YouTube's own handlers.
+  // A bubble listener on document is not enough: YouTube registers first, and
+  // stopPropagation cannot cancel a listener on the same node that already
+  // ran. stopImmediatePropagation then keeps the key from going any further.
+  window.addEventListener(
+    "keydown",
+    (e) => {
+      if (!root) return;
+      if (e.key === "/" && !inTextField(e.target)) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        setSearch(true);
+        return;
+      }
+      if (inTextField(e.target)) return; // typing owns the keyboard
+
+      const keys = {
+        Space: togglePlay,
+        ArrowLeft: () => nudgeTime(-10),
+        ArrowRight: () => nudgeTime(10),
+        ArrowUp: () => nudgeVolume(0.05),
+        ArrowDown: () => nudgeVolume(-0.05),
+        KeyM: toggleMute,
+        // YouTube binds f and t too. Taking f keeps fullscreen on the overlay
+        // rather than the player, which would hide the captions.
+        KeyF: toggleFullscreen,
+      };
+      const action = keys[e.code];
+      if (!action) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      action();
+    },
+    true,
+  );
 
   // Escape leaves. The overlay never pauses on the way out, so toggling it
   // never interrupts the audio.
-  document.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape" || !root) return;
-    if (typeMenuOpen) setTypeMenu(false);
-    else if (root.classList.contains("cm-paneled")) setPanel(false);
-    else if (root.classList.contains("cm-searching")) setSearch(false);
-    else close();
-  });
+  window.addEventListener(
+    "keydown",
+    (e) => {
+      if (e.key !== "Escape" || !root) return;
+      e.stopImmediatePropagation();
+      if (typeMenuOpen) setTypeMenu(false);
+      else if (root.classList.contains("cm-paneled")) setPanel(false);
+      else if (root.classList.contains("cm-searching")) setSearch(false);
+      else close();
+    },
+    true,
+  );
 
   // YouTube does not reload between videos. The overlay closes rather than
   // re-fetching in place, which keeps its state simple.

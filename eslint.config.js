@@ -22,6 +22,7 @@ const browserGlobals = {
   chrome: "readonly",
   navigator: "readonly",
   localStorage: "readonly",
+  Element: "readonly",
 };
 
 const nodeGlobals = {
