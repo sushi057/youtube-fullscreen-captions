@@ -7,7 +7,6 @@
     {
       "matches": ["*://www.youtube.com/watch*"],
       "js": [
-        "config.js",
         "vendor/transcript-classic.js",
         "caption-view.js",
         "overlay.js",

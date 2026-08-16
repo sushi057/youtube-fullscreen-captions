@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 // content scripts cannot import modules. Loading it here by evaluation keeps a
 // single copy of the code under test.
 const source = readFileSync(
-  new URL("../public/caption-view.js", import.meta.url),
+  new URL("../../extension/caption-view.js", import.meta.url),
   "utf8",
 );
 const CaptionView = new Function(`${source}; return CaptionView;`)();

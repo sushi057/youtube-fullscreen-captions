@@ -110,7 +110,6 @@ const CaptionOverlay = (() => {
       <div class="cm-badge">
         <div class="cm-title-line">
           <span class="cm-dot"></span><span class="cm-title"></span>
-          <button class="cm-share" type="button" aria-label="Copy a link to this page of captions">Copy link</button>
         </div>
         <div class="cm-author"></div>
       </div>
@@ -401,35 +400,6 @@ const CaptionOverlay = (() => {
         goToMatch(matchAt + (e.shiftKey ? -1 : 1));
       }
       e.stopPropagation(); // typing must not reach YouTube's own shortcuts
-    });
-  }
-
-  // --- Sharing ----------------------------------------------------------
-
-  // The overlay cannot import the shared module, so the link is built here
-  // from the same rule buildShareUrl implements and its tests cover:
-  // hundredths, and no trailing slash on the site url.
-  function shareUrl(range) {
-    const base = CAPTION_MODE_CONFIG.siteUrl.replace(/\/+$/, "");
-    const a = Math.round(range.start * 100) / 100;
-    const b = Math.round(range.end * 100) / 100;
-    return `${base}/s?v=${encodeURIComponent(videoId())}&a=${a}&b=${b}`;
-  }
-
-  function wireShare() {
-    const btn = root.querySelector(".cm-share");
-    btn.addEventListener("click", async (e) => {
-      e.stopPropagation();
-      const range = currentPageRange();
-      if (!range) return;
-      await navigator.clipboard.writeText(shareUrl(range));
-      btn.textContent = "Link copied";
-      btn.classList.add("cm-copied");
-      setTimeout(() => {
-        btn.textContent = "Copy link to this page";
-        btn.classList.remove("cm-copied");
-      }, 1600);
-      wake();
     });
   }
 
@@ -849,7 +819,6 @@ const CaptionOverlay = (() => {
     setTitle();
     wireControls();
     wireSearch();
-    wireShare();
     wirePanel();
     loadTypeChoice();
     applyTypeChoice();

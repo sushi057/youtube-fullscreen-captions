@@ -6,7 +6,7 @@ import {
   fetchTranscript,
   TranscriptError,
   createCache,
-} from "../lib/transcript.js";
+} from "../transcript.js";
 
 // --- Fixtures -----------------------------------------------------------
 

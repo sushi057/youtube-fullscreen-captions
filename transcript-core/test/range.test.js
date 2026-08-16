@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert";
 
-import { cutRange } from "../lib/transcript.js";
+import { cutRange } from "../transcript.js";
 
 const WORDS = [
   { start: 1, text: "We're", p: 0 },

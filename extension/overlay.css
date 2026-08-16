@@ -396,29 +396,6 @@ body.cm-open {
   background: #fff;
 }
 
-#caption-mode-overlay .cm-share {
-  all: unset;
-  cursor: pointer;
-  padding: 10px 16px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.06);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  white-space: nowrap;
-  transition: background 0.15s ease;
-}
-
-#caption-mode-overlay .cm-share:hover {
-  background: rgba(255, 255, 255, 0.12);
-}
-
-#caption-mode-overlay .cm-share.cm-copied {
-  background: rgba(255, 214, 102, 0.22);
-  border-color: rgba(255, 214, 102, 0.4);
-}
-
 /* --- Transcript search -------------------------------------------------- */
 
 #caption-mode-overlay .cm-search {
@@ -514,35 +491,6 @@ body.cm-open {
   font-weight: 700;
   letter-spacing: 0.04em;
   color: rgba(255, 255, 255, 0.75);
-}
-
-/* --- Copy link, beside the title ---------------------------------------- */
-
-#caption-mode-overlay .cm-share {
-  all: unset;
-  cursor: pointer;
-  margin-left: 14px;
-  padding: 4px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 7px;
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  transition: background 0.15s ease;
-}
-
-#caption-mode-overlay .cm-share:hover {
-  background: rgba(255, 255, 255, 0.14);
-  color: #fff;
-}
-
-#caption-mode-overlay .cm-share.cm-copied {
-  background: rgba(255, 214, 102, 0.22);
-  border-color: rgba(255, 214, 102, 0.4);
-  color: #fff;
 }
 
 /* --- Text options ------------------------------------------------------- */

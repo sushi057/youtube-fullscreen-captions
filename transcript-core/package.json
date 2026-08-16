@@ -1,0 +1,10 @@
+{
+  "name": "transcript-core",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared YouTube caption fetching and parsing. The source of truth for both the extension and the site.",
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  }
+}

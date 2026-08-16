@@ -8,7 +8,8 @@
     "format:check": "prettier --check .",
     "sync": "node scripts/sync-core.js",
     "sync:check": "node scripts/sync-core.js --check",
-    "check:packing": "node scripts/check-packing.js"
+    "check:packing": "node scripts/check-packing.js",
+    "test": "npm --prefix transcript-core test && npm --prefix site test"
   },
   "devDependencies": {
     "eslint": "^9.9.0",
