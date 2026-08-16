@@ -10,11 +10,13 @@ const browserGlobals = {
   clearTimeout: "readonly",
   setInterval: "readonly",
   clearInterval: "readonly",
+  AbortSignal: "readonly",
   MutationObserver: "readonly",
   getComputedStyle: "readonly",
   isFinite: "readonly",
   YT: "readonly",
   CaptionView: "readonly",
+  TranscriptCore: "readonly",
   CaptionOverlay: "readonly",
   CAPTION_MODE_CONFIG: "readonly",
   chrome: "readonly",
@@ -53,27 +55,7 @@ module.exports = [
     },
   },
   {
-    // The extension's ES modules: the service worker and its copy of the
-    // shared transcript module.
-    files: ["extension/worker.js", "extension/vendor/**/*.js"],
-    languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: "module",
-      globals: {
-        ...browserGlobals,
-        chrome: "readonly",
-        AbortSignal: "readonly",
-        navigator: "readonly",
-      },
-    },
-    rules: {
-      "no-unused-vars": "warn",
-      "no-undef": "error",
-    },
-  },
-  {
     files: ["extension/**/*.js", "site/public/**/*.js"],
-    ignores: ["extension/worker.js", "extension/vendor/**/*.js"],
     languageOptions: {
       ecmaVersion: 2021,
       sourceType: "script",

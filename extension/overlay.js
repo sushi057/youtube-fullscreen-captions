@@ -78,18 +78,34 @@ const CaptionOverlay = (() => {
     }
   }
 
+  // A transcript never changes once published, so this needs a ceiling but no
+  // expiry. One fetch per video per page session.
+  const cache = TranscriptCore.createCache(50);
+
+  // The fetch happens here, in the content script, because this code runs on
+  // youtube.com and so the call to YouTube's API is same-origin. The same call
+  // from a service worker carries `Origin: chrome-extension://<id>`, and
+  // YouTube answers 403.
   async function loadTranscript() {
-    const answer = await chrome.runtime.sendMessage({
-      type: "transcript",
-      videoId: videoId(),
-    });
-    if (!answer?.ok) {
-      showStatus(
-        FAILURE_MESSAGES[answer?.code] || FAILURE_MESSAGES.upstream_failed,
-      );
-      return false;
+    const id = videoId();
+    let data = cache.get(id);
+
+    if (!data) {
+      try {
+        data = await TranscriptCore.fetchTranscript(id);
+        cache.set(id, data);
+      } catch (err) {
+        const code =
+          err instanceof TranscriptCore.TranscriptError
+            ? err.code
+            : "upstream_failed";
+        console.error(`Caption Mode: transcript ${code} — ${err.message}`);
+        showStatus(FAILURE_MESSAGES[code] || FAILURE_MESSAGES.upstream_failed);
+        return false;
+      }
     }
-    words = CaptionView.flatten(answer.data);
+
+    words = CaptionView.flatten(data);
     if (!words.length) {
       showStatus(FAILURE_MESSAGES.no_transcript);
       return false;
