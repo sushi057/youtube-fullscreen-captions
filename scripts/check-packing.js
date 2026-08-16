@@ -29,10 +29,12 @@ const SCALES = { s: 0.75, m: 1, l: 1.3 };
   });
   let failures = 0;
 
+  // The last entry stands for fullscreen, where one more line is allowed.
   for (const size of [
-    { width: 1280, height: 720 },
-    { width: 1920, height: 960 },
-    { width: 1600, height: 640 },
+    { width: 1280, height: 720, lines: 4 },
+    { width: 1920, height: 960, lines: 4 },
+    { width: 1600, height: 640, lines: 4 },
+    { width: 1920, height: 1080, lines: 5, label: "fullscreen" },
   ]) {
     const page = await browser.newPage();
     await page.setViewport(size);
@@ -50,7 +52,7 @@ const SCALES = { s: 0.75, m: 1, l: 1.3 };
     for (const [fontName, stack] of Object.entries(FONTS)) {
       for (const [sizeName, scale] of Object.entries(SCALES)) {
         const res = await page.evaluate(
-          (stack, scale) => {
+          (stack, scale, lines) => {
             const root = document.getElementById("caption-mode-overlay");
             const cap = document.querySelector(".cm-caption");
             const stage = document.querySelector(".cm-stage");
@@ -66,7 +68,7 @@ const SCALES = { s: 0.75, m: 1, l: 1.3 };
             const packed = CaptionView.packPages(
               words,
               cap,
-              4,
+              lines,
               stage.clientHeight,
             );
 
@@ -94,12 +96,13 @@ const SCALES = { s: 0.75, m: 1, l: 1.3 };
           },
           stack,
           scale,
+          size.lines,
         );
 
-        const bad = res.worstLines > 4 || res.overflowing > 0;
+        const bad = res.worstLines > size.lines || res.overflowing > 0;
         if (bad) failures += 1;
         console.log(
-          `${size.width}x${size.height} ${fontName}/${sizeName} @${res.fontSize}: ` +
+          `${size.label || size.width + "x" + size.height} ${fontName}/${sizeName} @${res.fontSize}: ` +
             `${res.pages} pages, worst ${res.worstLines} lines, ` +
             `${res.overflowing} overflowing ${bad ? "<-- FAIL" : "ok"}`,
         );

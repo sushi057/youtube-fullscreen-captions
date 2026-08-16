@@ -8,6 +8,10 @@
 const CaptionOverlay = (() => {
   const ROOT_ID = "caption-mode-overlay";
   const MAX_LINES = 4;
+  // Fullscreen gives back the browser's chrome, so one more line fits. The
+  // height cap still applies: at the largest text this asks for more than the
+  // box has, and the packer simply keeps what fits.
+  const MAX_LINES_FULLSCREEN = 5;
   const TICK_MS = 100;
   const SAVE_EVERY_MS = 5000;
   const SPEEDS = [1, 1.25, 1.75, 2];
@@ -270,12 +274,18 @@ const CaptionOverlay = (() => {
     return true;
   }
 
+  function maxLines() {
+    return document.fullscreenElement === root
+      ? MAX_LINES_FULLSCREEN
+      : MAX_LINES;
+  }
+
   function computePages() {
     const stage = root.querySelector(".cm-stage");
     const packed = CaptionView.packPages(
       words,
       root.querySelector(".cm-caption"),
-      MAX_LINES,
+      maxLines(),
       stage.clientHeight,
     );
     pages = packed.pages;
@@ -696,7 +706,15 @@ const CaptionOverlay = (() => {
   document.addEventListener("fullscreenchange", () => {
     if (!root) return;
     const fs = document.fullscreenElement;
-    if (fs && fs !== root && !root.contains(fs)) document.exitFullscreen?.();
+    if (fs && fs !== root && !root.contains(fs)) {
+      document.exitFullscreen?.();
+      return;
+    }
+    // The box changed size and the line budget with it.
+    if (words.length) {
+      computePages();
+      rerender();
+    }
   });
 
   // Buttons and keys drive the same three steps, so they can never disagree.
