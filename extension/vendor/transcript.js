@@ -299,3 +299,28 @@ export function createCache(max) {
     },
   };
 }
+
+// --- Sharing ------------------------------------------------------------
+
+/**
+ * Cut the words spoken between two times.
+ *
+ * A shared link carries only a video id and two times, so this is what turns
+ * those three values back into a quote. The range is inclusive at both ends.
+ *
+ * @param {Array<{start: number, text: string}>} words
+ * @param {number} a one end of the range, in seconds
+ * @param {number} b the other end; the two may be given in any order
+ * @returns {{words: Array, text: string, start: number, end: number}}
+ */
+export function cutRange(words, a, b) {
+  const from = Math.min(a, b);
+  const to = Math.max(a, b);
+  const list = (words || []).filter((w) => w.start >= from && w.start <= to);
+  return {
+    words: list,
+    text: list.map((w) => w.text).join(" "),
+    start: list.length ? list[0].start : from,
+    end: list.length ? list[list.length - 1].start : to,
+  };
+}
