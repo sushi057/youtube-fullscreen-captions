@@ -1,31 +1,18 @@
-const test = require("node:test");
-const assert = require("node:assert");
+import test from "node:test";
+import assert from "node:assert";
 
 // The route's job is to turn a TranscriptError code into the right status and
-// to answer from cache the second time. Both are checked against a stubbed
-// transcript module so no test ever touches YouTube.
-const transcript = require("../transcript");
+// to answer from cache the second time. The app factory accepts an injected
+// fetcher, so no test ever touches YouTube.
+import { TranscriptError } from "../lib/transcript.js";
+import { createApp } from "../app-factory.js";
 
-const realFetch = transcript.fetchTranscript;
-
-function stubFetchTranscript(impl) {
-  transcript.fetchTranscript = impl;
-}
-
-test.afterEach(() => {
-  transcript.fetchTranscript = realFetch;
-});
-
-// server.js captures fetchTranscript at require time, so each test stubs first
-// and then loads a fresh copy of the app (which also gives it an empty cache).
-async function startServer() {
-  delete require.cache[require.resolve("../server")];
-  const app = require("../server");
+async function startServer(fetchTranscript) {
+  const app = createApp({ fetchTranscript });
   return new Promise((resolve) => {
     const server = app.listen(0, () => {
       const { port } = server.address();
       resolve({
-        server,
         url: (p) => `http://127.0.0.1:${port}${p}`,
         close: () => new Promise((r) => server.close(r)),
       });
@@ -34,7 +21,9 @@ async function startServer() {
 }
 
 test("a missing video id is a client error", async () => {
-  const s = await startServer();
+  const s = await startServer(async () => {
+    throw new TranscriptError("no_transcript");
+  });
   const res = await fetch(s.url("/api/transcript"));
   assert.equal(res.status, 400);
   assert.deepEqual(await res.json(), { error: "missing_video_id" });
@@ -42,10 +31,9 @@ test("a missing video id is a client error", async () => {
 });
 
 test("a video with no captions answers 404 no_transcript", async () => {
-  stubFetchTranscript(async () => {
-    throw new transcript.TranscriptError("no_transcript");
+  const s = await startServer(async () => {
+    throw new TranscriptError("no_transcript");
   });
-  const s = await startServer();
   const res = await fetch(s.url("/api/transcript?v=abc"));
   assert.equal(res.status, 404);
   assert.equal((await res.json()).error, "no_transcript");
@@ -53,10 +41,9 @@ test("a video with no captions answers 404 no_transcript", async () => {
 });
 
 test("a broken upstream answers 502, not 404", async () => {
-  stubFetchTranscript(async () => {
-    throw new transcript.TranscriptError("upstream_failed");
+  const s = await startServer(async () => {
+    throw new TranscriptError("upstream_failed");
   });
-  const s = await startServer();
   const res = await fetch(s.url("/api/transcript?v=abc"));
   assert.equal(res.status, 502);
   assert.equal((await res.json()).error, "upstream_failed");
@@ -64,10 +51,9 @@ test("a broken upstream answers 502, not 404", async () => {
 });
 
 test("an unplayable video answers 404 unavailable", async () => {
-  stubFetchTranscript(async () => {
-    throw new transcript.TranscriptError("unavailable");
+  const s = await startServer(async () => {
+    throw new TranscriptError("unavailable");
   });
-  const s = await startServer();
   const res = await fetch(s.url("/api/transcript?v=abc"));
   assert.equal(res.status, 404);
   assert.equal((await res.json()).error, "unavailable");
@@ -75,10 +61,9 @@ test("an unplayable video answers 404 unavailable", async () => {
 });
 
 test("an unexpected error is reported as an upstream failure", async () => {
-  stubFetchTranscript(async () => {
+  const s = await startServer(async () => {
     throw new TypeError("something else broke");
   });
-  const s = await startServer();
   const res = await fetch(s.url("/api/transcript?v=abc"));
   assert.equal(res.status, 502);
   await s.close();
@@ -86,7 +71,7 @@ test("an unexpected error is reported as an upstream failure", async () => {
 
 test("a second request for the same video is served from cache", async () => {
   let calls = 0;
-  stubFetchTranscript(async () => {
+  const s = await startServer(async () => {
     calls += 1;
     return {
       hasWordTiming: true,
@@ -94,7 +79,6 @@ test("a second request for the same video is served from cache", async () => {
       words: [],
     };
   });
-  const s = await startServer();
 
   const first = await (await fetch(s.url("/api/transcript?v=abc"))).json();
   const second = await (await fetch(s.url("/api/transcript?v=abc"))).json();
@@ -108,11 +92,10 @@ test("a second request for the same video is served from cache", async () => {
 
 test("a failed fetch is not cached", async () => {
   let calls = 0;
-  stubFetchTranscript(async () => {
+  const s = await startServer(async () => {
     calls += 1;
-    throw new transcript.TranscriptError("upstream_failed");
+    throw new TranscriptError("upstream_failed");
   });
-  const s = await startServer();
   await fetch(s.url("/api/transcript?v=abc"));
   await fetch(s.url("/api/transcript?v=abc"));
   assert.equal(calls, 2);
@@ -120,10 +103,9 @@ test("a failed fetch is not cached", async () => {
 });
 
 test("health reports degraded when the upstream is broken", async () => {
-  stubFetchTranscript(async () => {
-    throw new transcript.TranscriptError("upstream_failed", "boom");
+  const s = await startServer(async () => {
+    throw new TranscriptError("upstream_failed", "boom");
   });
-  const s = await startServer();
   const res = await fetch(s.url("/api/health"));
   assert.equal(res.status, 503);
   const body = await res.json();
@@ -133,12 +115,11 @@ test("health reports degraded when the upstream is broken", async () => {
 });
 
 test("health reports ok when the upstream answers", async () => {
-  stubFetchTranscript(async () => ({
+  const s = await startServer(async () => ({
     hasWordTiming: true,
     phrases: [{ start: 0, dur: 1, text: "hi" }],
     words: [],
   }));
-  const s = await startServer();
   const res = await fetch(s.url("/api/health"));
   assert.equal(res.status, 200);
   assert.equal((await res.json()).status, "ok");

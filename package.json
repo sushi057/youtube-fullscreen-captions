@@ -5,7 +5,9 @@
   "scripts": {
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "sync": "node scripts/sync-core.js",
+    "sync:check": "node scripts/sync-core.js --check"
   },
   "devDependencies": {
     "eslint": "^9.9.0",

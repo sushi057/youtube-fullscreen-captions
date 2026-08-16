@@ -23,7 +23,7 @@ const DEFAULT_RETRY_DELAY_MS = 400;
  *   "unavailable"     — the video is private, removed, or blocked here.
  *   "upstream_failed" — YouTube did not answer usefully. Not the video's fault.
  */
-class TranscriptError extends Error {
+export class TranscriptError extends Error {
   constructor(code, message) {
     super(message || code);
     this.name = "TranscriptError";
@@ -132,7 +132,7 @@ function round3(n) {
  * The caller does not have to know which format arrived: srv3 is tried first,
  * and srv1 answers only when srv3 found nothing.
  */
-function parseTimedText(xml) {
+export function parseTimedText(xml) {
   if (!xml) return { hasWordTiming: false, phrases: [], words: [] };
   const srv3 = parseSrv3(xml);
   if (srv3.phrases.length) return srv3;
@@ -229,7 +229,7 @@ function assertPlayable(data) {
  * @returns {Promise<{hasWordTiming: boolean, phrases: Array, words: Array}>}
  * @throws {TranscriptError}
  */
-async function fetchTranscript(videoId, options = {}) {
+export async function fetchTranscript(videoId, options = {}) {
   const fetchImpl = options.fetchImpl || globalThis.fetch;
   const retryOpts = {
     retries: options.retries ?? DEFAULT_RETRIES,
@@ -278,7 +278,7 @@ async function fetchTranscript(videoId, options = {}) {
  * Least-recently-used cache. Transcripts never change once published, so
  * entries need no expiry — only a ceiling on how many are held.
  */
-function createCache(max) {
+export function createCache(max) {
   const map = new Map();
   return {
     get(key) {
@@ -298,10 +298,3 @@ function createCache(max) {
     },
   };
 }
-
-module.exports = {
-  TranscriptError,
-  parseTimedText,
-  fetchTranscript,
-  createCache,
-};

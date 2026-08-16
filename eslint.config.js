@@ -32,7 +32,40 @@ module.exports = [
     ignores: ["node_modules/**", "site/node_modules/**"],
   },
   {
+    // Build tooling for the root package, which is CommonJS.
+    files: ["scripts/**/*.js"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "commonjs",
+      globals: nodeGlobals,
+    },
+    rules: {
+      "no-unused-vars": "warn",
+      "no-undef": "error",
+    },
+  },
+  {
+    // The extension's ES modules: the service worker and its copy of the
+    // shared transcript module.
+    files: ["extension/worker.js", "extension/vendor/**/*.js"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module",
+      globals: {
+        ...browserGlobals,
+        chrome: "readonly",
+        AbortSignal: "readonly",
+        navigator: "readonly",
+      },
+    },
+    rules: {
+      "no-unused-vars": "warn",
+      "no-undef": "error",
+    },
+  },
+  {
     files: ["extension/**/*.js", "site/public/**/*.js"],
+    ignores: ["extension/worker.js", "extension/vendor/**/*.js"],
     languageOptions: {
       ecmaVersion: 2021,
       sourceType: "script",
@@ -44,10 +77,16 @@ module.exports = [
     },
   },
   {
-    files: ["site/*.js", "site/test/**/*.js"],
+    files: [
+      "site/*.js",
+      "site/api/**/*.js",
+      "site/lib/**/*.js",
+      "site/test/**/*.js",
+      "transcript-core/**/*.js",
+    ],
     languageOptions: {
       ecmaVersion: 2022,
-      sourceType: "commonjs",
+      sourceType: "module",
       globals: nodeGlobals,
     },
     rules: {
