@@ -9,6 +9,7 @@ const CaptionOverlay = (() => {
   const ROOT_ID = "caption-mode-overlay";
   const MAX_LINES = 4;
   const TICK_MS = 100;
+  const SAVE_EVERY_MS = 5000;
   const SPEEDS = [1, 1.25, 1.75, 2];
 
   const FAILURE_MESSAGES = {
@@ -32,6 +33,8 @@ const CaptionOverlay = (() => {
   let matches = [];
   let matchAt = -1;
   let videoListeners = null;
+  let typeMenuOpen = false;
+  let phrases = [];
   // render cache
   let lastPage = -1;
   let lastWi = -1;
@@ -51,12 +54,64 @@ const CaptionOverlay = (() => {
     return new URLSearchParams(window.location.search).get("v");
   }
 
+  // --- Remembering where you were ---------------------------------------
+
+  // Kept in localStorage on youtube.com, so it survives a reload and costs no
+  // storage permission. Positions are small and few, so they are never pruned.
+  const POSITION_KEY = "captionMode:position:";
+  // Below this, there is nothing worth resuming; near the end, resuming would
+  // drop you at the credits.
+  const RESUME_FLOOR_S = 20;
+  const RESUME_TAIL_S = 15;
+  // Only resume when the video is still at its start. If YouTube already put
+  // the viewer somewhere — its own resume, or a t= link — that wins.
+  const RESUME_ONLY_BEFORE_S = 5;
+
+  function savePosition() {
+    if (!video || !videoId()) return;
+    const at = video.currentTime;
+    const dur = video.duration || 0;
+    if (at < RESUME_FLOOR_S) return;
+    if (dur && at > dur - RESUME_TAIL_S) {
+      // Finished, near enough. Forget it rather than resume at the end.
+      try {
+        localStorage.removeItem(POSITION_KEY + videoId());
+      } catch {
+        /* storage can be disabled; losing a position is not worth an error */
+      }
+      return;
+    }
+    try {
+      localStorage.setItem(POSITION_KEY + videoId(), String(Math.floor(at)));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function resumePosition() {
+    if (video.currentTime > RESUME_ONLY_BEFORE_S) return;
+    let saved = null;
+    try {
+      saved = localStorage.getItem(POSITION_KEY + videoId());
+    } catch {
+      return;
+    }
+    const at = Number(saved);
+    if (!Number.isFinite(at) || at < RESUME_FLOOR_S) return;
+    const dur = video.duration || 0;
+    if (dur && at > dur - RESUME_TAIL_S) return;
+    video.currentTime = at;
+  }
+
   function build() {
     const el = document.createElement("div");
     el.id = ROOT_ID;
     el.innerHTML = `
       <div class="cm-badge">
-        <div class="cm-title-line"><span class="cm-dot"></span><span class="cm-title"></span></div>
+        <div class="cm-title-line">
+          <span class="cm-dot"></span><span class="cm-title"></span>
+          <button class="cm-share" type="button" aria-label="Copy a link to this page of captions">Copy link</button>
+        </div>
         <div class="cm-author"></div>
       </div>
       <button class="cm-exit" type="button" aria-label="Exit Caption Mode">
@@ -70,6 +125,15 @@ const CaptionOverlay = (() => {
                autocomplete="off" spellcheck="false" aria-label="Search transcript" />
         <span class="cm-search-count"></span>
       </div>
+      <aside class="cm-panel hidden" aria-label="Full transcript">
+        <div class="cm-panel-head">
+          <input class="cm-panel-search" type="text" placeholder="Search the transcript"
+                 autocomplete="off" spellcheck="false" aria-label="Search the transcript" />
+          <span class="cm-panel-count"></span>
+          <button class="cm-panel-close" type="button" aria-label="Close transcript">&times;</button>
+        </div>
+        <div class="cm-panel-body"></div>
+      </aside>
       <div class="cm-controls">
         <div class="cm-scrim"></div>
         <div class="cm-bar">
@@ -97,6 +161,15 @@ const CaptionOverlay = (() => {
             <span class="cm-mode-label">Flow</span>
           </button>
           <button class="cm-speed-btn" type="button" aria-label="Playback speed">1&times;</button>
+          <div class="cm-type-wrap">
+            <div class="cm-type-menu hidden"></div>
+            <button class="cm-ico cm-small cm-type-btn" type="button" aria-label="Text options">
+              <svg viewBox="0 0 24 24"><path d="M5 17.6 9.6 5h2.1l4.6 12.6h-2.1l-1.1-3.2H8.2l-1.1 3.2H5zm3.8-4.9h3.6l-1.8-5.1-1.8 5.1zM17.5 17.6v-1.5l3.2-3.6c.3-.3.5-.6.5-.9 0-.5-.4-.8-1-.8s-1 .3-1.1.9h-1.6c.1-1.4 1.1-2.3 2.7-2.3 1.6 0 2.6.9 2.6 2.1 0 .7-.3 1.3-1.1 2.1l-2 2.2h3.2v1.8h-5.4z"/></svg>
+            </button>
+          </div>
+          <button class="cm-ico cm-small cm-transcript-btn" type="button" aria-label="Show full transcript">
+            <svg viewBox="0 0 24 24"><path d="M3 5h18v2H3V5zm0 4h12v2H3V9zm0 4h18v2H3v-2zm0 4h12v2H3v-2z"/></svg>
+          </button>
           <div class="cm-vol-wrap">
             <button class="cm-ico cm-small cm-mute" type="button" aria-label="Mute">
               <svg viewBox="0 0 24 24">
@@ -114,7 +187,6 @@ const CaptionOverlay = (() => {
           <button class="cm-ico cm-fullscreen" type="button" aria-label="Fullscreen">
             <svg viewBox="0 0 24 24"><path d="M4 9V4h5v2H6v3H4zm11-5h5v5h-2V6h-3V4zM4 15h2v3h3v2H4v-5zm14 0h2v5h-5v-2h3v-3z"/></svg>
           </button>
-          <button class="cm-share" type="button">Copy link to this page</button>
         </div>
       </div>
     `;
@@ -148,9 +220,31 @@ const CaptionOverlay = (() => {
   // youtube.com and so the call to YouTube's API is same-origin. The same call
   // from a service worker carries `Origin: chrome-extension://<id>`, and
   // YouTube answers 403.
+  // Fetching costs about 800ms, and it used to run when the overlay opened,
+  // so every open paid it. Starting it as soon as the watch page loads means
+  // the answer is usually already here by the time anyone clicks.
+  let pending = null;
+
+  function prefetch() {
+    const id = videoId();
+    if (!id || cache.get(id) || pending) return;
+    pending = TranscriptCore.fetchTranscript(id)
+      .then((data) => {
+        cache.set(id, data);
+        return data;
+      })
+      .catch(() => null) // the real error is reported when the overlay opens
+      .finally(() => {
+        pending = null;
+      });
+  }
+
   async function loadTranscript() {
     const id = videoId();
     let data = cache.get(id);
+
+    if (!data && pending) await pending; // a prefetch is already in flight
+    data = data || cache.get(id);
 
     if (!data) {
       try {
@@ -167,6 +261,7 @@ const CaptionOverlay = (() => {
       }
     }
 
+    phrases = data.phrases || [];
     words = CaptionView.flatten(data);
     if (!words.length) {
       showStatus(FAILURE_MESSAGES.no_transcript);
@@ -422,6 +517,198 @@ const CaptionOverlay = (() => {
     return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
   }
 
+  // --- Reading options --------------------------------------------------
+
+  // Few choices on purpose. Free control over size and face is a settings
+  // screen; this is a reading tool, so each option has one clear reason.
+  const FONTS = [
+    { id: "sans", label: "Sans", stack: '"Archivo", "Roboto", sans-serif' },
+    { id: "serif", label: "Serif", stack: 'Georgia, "Times New Roman", serif' },
+    { id: "mono", label: "Mono", stack: '"Roboto Mono", Consolas, monospace' },
+    {
+      id: "dyslexic",
+      label: "Dyslexic",
+      stack: '"OpenDyslexic", "Comic Sans MS", "Trebuchet MS", sans-serif',
+    },
+  ];
+  const SIZES = [
+    { id: "s", label: "S", scale: 0.75 },
+    { id: "m", label: "M", scale: 1 },
+    { id: "l", label: "L", scale: 1.3 },
+  ];
+  const TYPE_KEY = "captionMode:type";
+
+  let typeChoice = { font: "sans", size: "m" };
+
+  function loadTypeChoice() {
+    try {
+      const raw = localStorage.getItem(TYPE_KEY);
+      if (raw) typeChoice = { ...typeChoice, ...JSON.parse(raw) };
+    } catch {
+      /* a bad or blocked value just means the defaults */
+    }
+  }
+
+  function applyTypeChoice() {
+    const font = FONTS.find((f) => f.id === typeChoice.font) || FONTS[0];
+    const size = SIZES.find((s) => s.id === typeChoice.size) || SIZES[1];
+    root.style.setProperty("--cm-font", font.stack);
+    root.style.setProperty("--cm-scale", String(size.scale));
+    try {
+      localStorage.setItem(TYPE_KEY, JSON.stringify(typeChoice));
+    } catch {
+      /* ignore */
+    }
+    // The face and size decide how much text fits, so the pages must be
+    // measured again before anything is drawn.
+    if (words.length) {
+      computePages();
+      rerender();
+    }
+  }
+
+  function buildTypeMenu() {
+    const menu = root.querySelector(".cm-type-menu");
+    menu.innerHTML = "";
+
+    const row = (title, items, key) => {
+      const group = document.createElement("div");
+      group.className = "cm-type-group";
+      const label = document.createElement("div");
+      label.className = "cm-type-label";
+      label.textContent = title;
+      group.appendChild(label);
+      const opts = document.createElement("div");
+      opts.className = "cm-type-opts";
+      for (const item of items) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className =
+          "cm-type-opt" + (typeChoice[key] === item.id ? " active" : "");
+        b.textContent = item.label;
+        if (item.stack) b.style.fontFamily = item.stack;
+        b.addEventListener("click", (e) => {
+          e.stopPropagation();
+          typeChoice = { ...typeChoice, [key]: item.id };
+          applyTypeChoice();
+          buildTypeMenu();
+          wake();
+        });
+        opts.appendChild(b);
+      }
+      group.appendChild(opts);
+      menu.appendChild(group);
+    };
+
+    row("Font", FONTS, "font");
+    row("Size", SIZES, "size");
+  }
+
+  function setTypeMenu(open) {
+    typeMenuOpen = open;
+    root.querySelector(".cm-type-menu").classList.toggle("hidden", !open);
+    if (open) buildTypeMenu();
+  }
+
+  // --- Full transcript --------------------------------------------------
+
+  // A reference you consult without losing your place: the captions keep
+  // playing behind it, and closing returns you exactly where you were.
+  function buildPanel() {
+    const body = root.querySelector(".cm-panel-body");
+    body.innerHTML = "";
+    const frag = document.createDocumentFragment();
+    phrases.forEach((p, i) => {
+      const line = document.createElement("button");
+      line.type = "button";
+      line.className = "cm-line";
+      line.dataset.i = i;
+      const time = document.createElement("span");
+      time.className = "cm-line-time";
+      time.textContent = formatTime(p.start);
+      const text = document.createElement("span");
+      text.className = "cm-line-text";
+      text.textContent = p.text;
+      line.append(time, text);
+      frag.appendChild(line);
+    });
+    body.appendChild(frag);
+  }
+
+  function filterPanel(query) {
+    const q = query.trim().toLowerCase();
+    const count = root.querySelector(".cm-panel-count");
+    let shown = 0;
+    for (const line of root.querySelectorAll(".cm-line")) {
+      const text = phrases[Number(line.dataset.i)].text.toLowerCase();
+      const hit = !q || text.includes(q);
+      line.classList.toggle("cm-hidden", !hit);
+      if (hit) shown += 1;
+    }
+    count.textContent = q ? `${shown} line${shown === 1 ? "" : "s"}` : "";
+    count.classList.toggle("none", Boolean(q) && shown === 0);
+  }
+
+  // Keeps the line being spoken in view while the panel is open.
+  function markPanelPosition() {
+    const panel = root.querySelector(".cm-panel");
+    if (panel.classList.contains("hidden") || !phrases.length) return;
+    const at = CaptionView.lastIndexBefore(phrases, video.currentTime);
+    const idx = Math.max(0, at);
+    const prev = root.querySelector(".cm-line.current");
+    if (prev && Number(prev.dataset.i) === idx) return;
+    if (prev) prev.classList.remove("current");
+    const line = root.querySelector(`.cm-line[data-i="${idx}"]`);
+    if (line) {
+      line.classList.add("current");
+      line.scrollIntoView({ block: "center" });
+    }
+  }
+
+  function setPanel(open) {
+    const panel = root.querySelector(".cm-panel");
+    panel.classList.toggle("hidden", !open);
+    root.classList.toggle("cm-paneled", open);
+    // The panel takes width from the caption box, so what fits on a page
+    // changes. Without this the text keeps its old, now too-wide, pages.
+    if (words.length) {
+      computePages();
+      rerender();
+    }
+    if (open) {
+      if (!panel.dataset.built) {
+        buildPanel();
+        panel.dataset.built = "1";
+      }
+      markPanelPosition();
+      root.querySelector(".cm-panel-search").focus();
+      wake();
+    }
+  }
+
+  function wirePanel() {
+    const panel = root.querySelector(".cm-panel");
+    const input = root.querySelector(".cm-panel-search");
+
+    panel.addEventListener("click", (e) => e.stopPropagation());
+    input.addEventListener("input", () => filterPanel(input.value));
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") setPanel(false);
+      e.stopPropagation();
+    });
+    root
+      .querySelector(".cm-panel-close")
+      .addEventListener("click", () => setPanel(false));
+
+    // A transcript line is a place in the video, so clicking one goes there.
+    panel.addEventListener("click", (e) => {
+      const line = e.target.closest(".cm-line");
+      if (!line) return;
+      video.currentTime = phrases[Number(line.dataset.i)].start;
+      rerender();
+    });
+  }
+
   // Buttons and keys drive the same three steps, so they can never disagree.
   function nudgeTime(seconds) {
     const dur = video.duration || 0;
@@ -489,6 +776,10 @@ const CaptionOverlay = (() => {
     on(".cm-fwd", "click", () => nudgeTime(10));
     on(".cm-mode", "click", () => setMode(mode === "flow" ? "phrase" : "flow"));
     on(".cm-speed-btn", "click", cycleSpeed);
+    on(".cm-type-btn", "click", () => setTypeMenu(!typeMenuOpen));
+    on(".cm-transcript-btn", "click", () =>
+      setPanel(root.querySelector(".cm-panel").classList.contains("hidden")),
+    );
     on(".cm-mute", "click", toggleMute);
     on(".cm-fullscreen", "click", () => {
       if (!document.fullscreenElement) root.requestFullscreen?.();
@@ -560,6 +851,10 @@ const CaptionOverlay = (() => {
     wireControls();
     wireSearch();
     wireShare();
+    wirePanel();
+    loadTypeChoice();
+    applyTypeChoice();
+    resumePosition();
     updateVolumeUI();
     updateSpeedLabel();
     // Paint the controls now. They used to wait for the render timer, which
@@ -573,14 +868,22 @@ const CaptionOverlay = (() => {
     if (!ok) return;
     computePages();
     rerender();
+    let sinceSave = 0;
     timer = setInterval(() => {
       render();
       updateSeek();
+      markPanelPosition();
+      // Saving every tick would write ten times a second for no gain.
+      if ((sinceSave += TICK_MS) >= SAVE_EVERY_MS) {
+        sinceSave = 0;
+        savePosition();
+      }
     }, TICK_MS);
   }
 
   function close() {
     if (!root) return;
+    savePosition();
     clearTimeout(hideTimer);
     clearInterval(timer);
     if (videoListeners) {
@@ -602,6 +905,7 @@ const CaptionOverlay = (() => {
     root = null;
     video = null;
     words = [];
+    phrases = [];
     pages = [];
     pageOfWord = [];
     searchIndex = null;
@@ -658,7 +962,9 @@ const CaptionOverlay = (() => {
   // never interrupts the audio.
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape" || !root) return;
-    if (root.classList.contains("cm-searching")) setSearch(false);
+    if (typeMenuOpen) setTypeMenu(false);
+    else if (root.classList.contains("cm-paneled")) setPanel(false);
+    else if (root.classList.contains("cm-searching")) setSearch(false);
     else close();
   });
 
@@ -680,6 +986,7 @@ const CaptionOverlay = (() => {
     open,
     close,
     toggle,
+    prefetch,
     isOpen,
     currentPageRange,
     getVideo: () => video,

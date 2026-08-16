@@ -108,22 +108,54 @@ const CaptionView = (() => {
       Math.min(lineH * maxLines + lineH * 0.15, maxHeight || Infinity),
     );
 
+    // Reading scrollHeight forces a layout, so the cost is the number of
+    // measurements, not the number of words. Measuring after every word meant
+    // one layout per word — about a second for a two-hour talk. Growing the
+    // candidate and then bisecting it costs roughly a dozen per page.
+    const fits = (from, count) => {
+      // renderPage draws each word with a trailing space, so the probe has to
+      // as well. Dropping the last one changes where the line wraps.
+      probe.textContent = words
+        .slice(from, from + count)
+        .map((w) => w.text + " ")
+        .join("");
+      return probe.scrollHeight <= maxH;
+    };
+
     let start = 0;
-    for (let i = 0; i < words.length; i++) {
-      const span = document.createElement("span");
-      span.className = "word";
-      span.textContent = words[i].text + " ";
-      probe.appendChild(span);
-      if (probe.scrollHeight > maxH && i > start) {
-        // This word overflows the box, so it begins the next page.
-        probe.removeChild(span);
-        pages.push({ start, end: i - 1 });
-        start = i;
-        probe.innerHTML = "";
-        probe.appendChild(span);
+    while (start < words.length) {
+      const left = words.length - start;
+
+      // Grow until it no longer fits, keeping the last size that did.
+      let good = 0;
+      let probeCount = 1;
+      while (probeCount <= left && fits(start, probeCount)) {
+        good = probeCount;
+        probeCount *= 2;
       }
+
+      // Bisecting needs an upper bound that is known NOT to fit. Growth gives
+      // one only when it stopped because a size failed, not because it ran out
+      // of words — so that case is tested before assuming it.
+      let count;
+      if (good >= left) {
+        count = left; // the rest of the transcript fits on this page
+      } else if (probeCount > left && fits(start, left)) {
+        count = left;
+      } else {
+        let low = good;
+        let high = Math.min(probeCount, left);
+        while (low + 1 < high) {
+          const mid = (low + high) >> 1;
+          if (fits(start, mid)) low = mid;
+          else high = mid;
+        }
+        count = Math.max(1, low); // never make a page of no words
+      }
+
+      pages.push({ start, end: start + count - 1 });
+      start += count;
     }
-    pages.push({ start, end: words.length - 1 });
     probeParent.removeChild(probe);
 
     pages.forEach((p, idx) => {

@@ -68,8 +68,11 @@ function injectButton() {
 // action row is (re)rendered.
 function start() {
   injectButton();
+  // Warm the transcript before anyone asks for it, so opening is instant.
+  CaptionOverlay.prefetch();
 
   document.addEventListener("yt-navigate-finish", () => {
+    CaptionOverlay.prefetch();
     // Old button belongs to the previous video's DOM; clean up just in case.
     const stale = document.getElementById(BUTTON_ID);
     if (stale) stale.remove();

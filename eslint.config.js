@@ -21,6 +21,7 @@ const browserGlobals = {
   CAPTION_MODE_CONFIG: "readonly",
   chrome: "readonly",
   navigator: "readonly",
+  localStorage: "readonly",
 };
 
 const nodeGlobals = {
