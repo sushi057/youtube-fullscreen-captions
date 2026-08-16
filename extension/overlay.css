@@ -469,3 +469,47 @@ body.cm-open {
 #caption-mode-overlay.cm-searching .cm-badge {
   opacity: 0.12 !important;
 }
+
+/* --- Exit ---------------------------------------------------------------
+   The launcher button sits on the page underneath this layer, so the overlay
+   carries its own way out. It dims when idle but never disappears. */
+
+#caption-mode-overlay .cm-exit {
+  all: unset;
+  position: absolute;
+  top: 28px;
+  right: 34px;
+  z-index: 6;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  opacity: 0.9;
+  transition:
+    opacity 0.35s ease,
+    background 0.15s ease;
+}
+
+#caption-mode-overlay .cm-exit:hover {
+  opacity: 1 !important;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+#caption-mode-overlay .cm-exit svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  flex: none;
+}
+
+#caption-mode-overlay .cm-exit-label {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.75);
+}

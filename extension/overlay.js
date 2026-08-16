@@ -59,6 +59,10 @@ const CaptionOverlay = (() => {
         <div class="cm-title-line"><span class="cm-dot"></span><span class="cm-title"></span></div>
         <div class="cm-author"></div>
       </div>
+      <button class="cm-exit" type="button" aria-label="Exit Caption Mode">
+        <svg viewBox="0 0 24 24"><path d="M18.3 5.71 12 12l6.3 6.29-1.42 1.42L10.59 13.4 4.3 19.7 2.88 18.3 9.17 12 2.88 5.71 4.3 4.29l6.29 6.3 6.29-6.3z"/></svg>
+        <span class="cm-exit-label">Esc</span>
+      </button>
       <div class="cm-stage"><div class="cm-caption caption"></div></div>
       <div class="cm-status"></div>
       <div class="cm-search hidden">
@@ -357,6 +361,9 @@ const CaptionOverlay = (() => {
     if (idle && speedMenuOpen) return;
     root.querySelector(".cm-controls").classList.toggle("idle", idle);
     root.querySelector(".cm-badge").style.opacity = idle ? "0" : "0.85";
+    // The way out dims but never disappears, unlike the rest of the chrome.
+    // Everything else can hide, because Escape is not enough on its own.
+    root.querySelector(".cm-exit").style.opacity = idle ? "0.25" : "0.9";
     root.classList.toggle("cm-hide-cursor", idle);
   }
 
@@ -437,6 +444,9 @@ const CaptionOverlay = (() => {
         fn(e);
       });
 
+    // The launcher button is on the page underneath, so the overlay must carry
+    // its own way out. Escape works too, and the button says so.
+    on(".cm-exit", "click", close);
     on(".cm-playpause", "click", togglePlay);
     on(".cm-back", "click", () => {
       video.currentTime = Math.max(0, video.currentTime - 10);
