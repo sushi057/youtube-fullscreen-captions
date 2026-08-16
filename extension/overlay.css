@@ -1,0 +1,757 @@
+/* The black layer. Opaque, above everything YouTube draws, and covering the
+   whole page — the video keeps playing and decoding underneath. */
+#caption-mode-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  background: #000;
+  color: #fff;
+  font-family: "Archivo", "Roboto", "Helvetica Neue", Helvetica, sans-serif;
+  user-select: none;
+  cursor: default;
+}
+
+body.cm-open {
+  overflow: hidden;
+}
+
+#caption-mode-overlay .cm-badge {
+  position: absolute;
+  top: 34px;
+  left: 46px;
+  opacity: 0.85;
+  transition: opacity 0.35s ease;
+}
+
+#caption-mode-overlay .cm-title-line {
+  display: flex;
+  align-items: center;
+  /* Sized to sit at the same level as the control bar, not below it. */
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+#caption-mode-overlay .cm-author {
+  margin-top: 5px;
+  font-size: 16px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+#caption-mode-overlay .cm-stage {
+  position: absolute;
+  top: 18%;
+  left: 8vw;
+  width: 70vw;
+  bottom: 16vh;
+  display: flex;
+  align-items: flex-start;
+}
+
+#caption-mode-overlay .cm-caption {
+  width: 100%;
+  /* The reader picks the face and the size; the packer re-measures after. */
+  font-family: var(--cm-font, "Archivo", "Roboto", sans-serif);
+  font-size: calc(clamp(2.6rem, 6vw, 7rem) * var(--cm-scale, 1));
+  font-weight: var(--cm-weight, 800);
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  color: var(--cm-color, #f2ede3);
+  text-wrap: pretty;
+  overflow-wrap: normal;
+}
+
+#caption-mode-overlay .word {
+  display: inline;
+  transition: opacity 0.16s ease;
+}
+
+/* Not-yet-spoken words stay invisible but keep their space, so the block holds
+   a stable multi-line shape instead of reflowing as words appear. */
+#caption-mode-overlay .word.hidden {
+  opacity: 0;
+}
+
+#caption-mode-overlay .word.found {
+  background: rgba(255, 214, 102, 0.28);
+  border-radius: 0.06em;
+  box-shadow: 0 0 0 0.06em rgba(255, 214, 102, 0.28);
+}
+
+#caption-mode-overlay .cm-status {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 8vw;
+  text-align: center;
+  font-size: clamp(1.1rem, 3vw, 1.6rem);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+#caption-mode-overlay .cm-status.visible {
+  display: flex;
+}
+
+/* --- Controls ----------------------------------------------------------
+   Ported from the player page's control bar, scoped to the overlay. */
+
+#caption-mode-overlay .cm-controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transition:
+    opacity 0.35s ease,
+    transform 0.35s ease;
+}
+
+#caption-mode-overlay .cm-controls.idle {
+  opacity: 0;
+  transform: translateY(14px);
+  pointer-events: none;
+}
+
+#caption-mode-overlay.cm-hide-cursor {
+  cursor: none;
+}
+
+#caption-mode-overlay .cm-scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.85) 0%,
+    rgba(0, 0, 0, 0.45) 45%,
+    rgba(0, 0, 0, 0) 100%
+  );
+}
+
+#caption-mode-overlay .cm-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 0 46px 40px;
+}
+
+#caption-mode-overlay .cm-ico {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  color: #fff;
+  opacity: 0.95;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+}
+
+#caption-mode-overlay .cm-ico svg {
+  width: 42px;
+  height: 42px;
+  fill: currentColor;
+}
+
+#caption-mode-overlay .cm-ico.cm-small {
+  width: 36px;
+  height: 48px;
+}
+
+#caption-mode-overlay .cm-ico.cm-small svg {
+  width: 32px;
+  height: 32px;
+}
+
+#caption-mode-overlay .cm-ico:hover {
+  opacity: 1;
+  transform: scale(1.06);
+}
+
+/* Play and pause swap on the same button. */
+#caption-mode-overlay .cm-icon-play {
+  display: none;
+}
+
+#caption-mode-overlay.cm-paused .cm-icon-pause {
+  display: none;
+}
+
+#caption-mode-overlay.cm-paused .cm-icon-play {
+  display: block;
+}
+
+#caption-mode-overlay .cm-pill {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 10px;
+  border-radius: 7px;
+  color: #fff;
+  opacity: 0.9;
+  transition:
+    opacity 0.15s ease,
+    background 0.15s ease;
+}
+
+#caption-mode-overlay .cm-pill:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+#caption-mode-overlay .cm-pill svg {
+  width: 30px;
+  height: 30px;
+  fill: currentColor;
+}
+
+/* Mark and word belong together, so they sit tight; the pill's own padding
+   then matches the bar's gap, and the space to the time and the speed reads
+   the same on both sides. */
+#caption-mode-overlay .cm-mode-label {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* Flow and Phrase carry their own mark, so the pill is readable at a glance. */
+#caption-mode-overlay .cm-icon-phrase {
+  display: none;
+}
+
+#caption-mode-overlay.cm-mode-phrase .cm-icon-flow {
+  display: none;
+}
+
+#caption-mode-overlay.cm-mode-phrase .cm-icon-phrase {
+  display: block;
+}
+
+#caption-mode-overlay .cm-speed-wrap {
+  position: relative;
+}
+
+#caption-mode-overlay .cm-speed-btn {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  padding: 0 9px;
+  border-radius: 7px;
+  color: #fff;
+  opacity: 0.9;
+  font-weight: 800;
+  font-size: 18px;
+  transition:
+    opacity 0.15s ease,
+    background 0.15s ease;
+}
+
+#caption-mode-overlay .cm-speed-btn:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+#caption-mode-overlay .cm-speed-menu {
+  position: absolute;
+  bottom: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(18, 18, 18, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 96px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+}
+
+#caption-mode-overlay .cm-speed-menu.hidden {
+  display: none;
+}
+
+#caption-mode-overlay .cm-speed-opt {
+  all: unset;
+  cursor: pointer;
+  text-align: center;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  transition: background 0.12s ease;
+}
+
+#caption-mode-overlay .cm-speed-opt:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+#caption-mode-overlay .cm-speed-opt.active {
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+#caption-mode-overlay .cm-seek-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+#caption-mode-overlay .cm-cur-time,
+#caption-mode-overlay .cm-dur-time {
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+  font-variant-numeric: tabular-nums;
+  min-width: 46px;
+  text-align: center;
+}
+
+/* The total swaps to the time left, so it reads as something you can press. */
+#caption-mode-overlay .cm-dur-time {
+  cursor: pointer;
+  /* Matched to the speed button's padding, so the mode pill between them
+     keeps the same air on its left and its right. */
+  padding: 3px 9px;
+  border-radius: 5px;
+  transition: background 0.15s ease;
+}
+
+#caption-mode-overlay .cm-dur-time:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+#caption-mode-overlay .cm-seek-track {
+  position: relative;
+  flex: 1;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+#caption-mode-overlay .cm-seek-bg {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+#caption-mode-overlay .cm-seek-fill {
+  position: absolute;
+  left: 0;
+  height: 5px;
+  border-radius: 3px;
+  background: #fff;
+  width: 0;
+}
+
+#caption-mode-overlay .cm-seek-knob {
+  position: absolute;
+  left: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
+  transform: translateX(-50%);
+}
+
+#caption-mode-overlay .cm-vol-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#caption-mode-overlay .cm-vol-track {
+  position: relative;
+  width: 104px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+#caption-mode-overlay .cm-vol-bg {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+#caption-mode-overlay .cm-vol-fill {
+  position: absolute;
+  left: 0;
+  height: 4px;
+  border-radius: 2px;
+  background: #fff;
+  width: 104px;
+}
+
+#caption-mode-overlay .cm-vol-knob {
+  position: absolute;
+  left: 98px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+/* --- Transcript search -------------------------------------------------- */
+
+#caption-mode-overlay .cm-search {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(24, 24, 27, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+#caption-mode-overlay .cm-search.hidden {
+  display: none;
+}
+
+#caption-mode-overlay .cm-search-input {
+  width: 280px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+#caption-mode-overlay .cm-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+#caption-mode-overlay .cm-search-count {
+  min-width: 62px;
+  text-align: right;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+#caption-mode-overlay .cm-search-count.none {
+  color: rgba(255, 138, 128, 0.9);
+}
+
+/* The search bar sits across the top, where the badge already is. */
+#caption-mode-overlay.cm-searching .cm-badge {
+  opacity: 0.12 !important;
+}
+
+/* --- Exit ---------------------------------------------------------------
+   The launcher button sits on the page underneath this layer, so the overlay
+   carries its own way out. It dims when idle but never disappears. */
+
+#caption-mode-overlay .cm-exit {
+  all: unset;
+  position: absolute;
+  top: 28px;
+  right: 34px;
+  z-index: 8;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  opacity: 0.9;
+  transition:
+    opacity 0.35s ease,
+    background 0.15s ease;
+}
+
+#caption-mode-overlay .cm-exit:hover {
+  opacity: 1 !important;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+#caption-mode-overlay .cm-exit svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  flex: none;
+}
+
+#caption-mode-overlay .cm-exit-label {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* --- Text options ------------------------------------------------------- */
+
+#caption-mode-overlay .cm-type-wrap {
+  position: relative;
+}
+
+#caption-mode-overlay .cm-type-menu {
+  position: absolute;
+  bottom: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  min-width: 250px;
+  border-radius: 12px;
+  background: rgba(18, 18, 18, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+}
+
+#caption-mode-overlay .cm-type-menu.hidden {
+  display: none;
+}
+
+#caption-mode-overlay .cm-type-label {
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+#caption-mode-overlay .cm-type-opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#caption-mode-overlay .cm-type-opt {
+  all: unset;
+  cursor: pointer;
+  box-sizing: border-box;
+  padding: 7px 10px;
+  text-align: center;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
+  font-weight: 600;
+  transition: background 0.12s ease;
+}
+
+#caption-mode-overlay .cm-type-opt:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+#caption-mode-overlay .cm-type-opt.active {
+  background: #fff;
+  color: #000;
+  font-weight: 800;
+}
+
+/* Each group keeps its own shape: the faces two by two, the three sizes on
+   one line, the colours three by two. Grid, so every cell is the same size
+   whatever word it holds. */
+#caption-mode-overlay .cm-opts-font {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+#caption-mode-overlay .cm-opts-size {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+#caption-mode-overlay .cm-type-size {
+  padding: 7px 4px;
+  font-size: 12px;
+}
+
+#caption-mode-overlay .cm-opts-swatch {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+#caption-mode-overlay .cm-type-swatch {
+  height: 26px;
+  padding: 0;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+#caption-mode-overlay .cm-type-swatch.active {
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.35),
+    0 0 0 2px #fff;
+}
+
+/* --- Full transcript panel ---------------------------------------------- */
+
+#caption-mode-overlay .cm-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(520px, 42vw);
+  display: flex;
+  flex-direction: column;
+  background: rgba(12, 12, 14, 0.97);
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: -20px 0 60px rgba(0, 0, 0, 0.6);
+  z-index: 7;
+}
+
+#caption-mode-overlay .cm-panel.hidden {
+  display: none;
+}
+
+#caption-mode-overlay .cm-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#caption-mode-overlay .cm-panel-search {
+  flex: 1;
+  border: 0;
+  outline: none;
+  padding: 9px 12px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+}
+
+#caption-mode-overlay .cm-panel-search::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+#caption-mode-overlay .cm-panel-count {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+}
+
+#caption-mode-overlay .cm-panel-count.none {
+  color: rgba(255, 138, 128, 0.9);
+}
+
+#caption-mode-overlay .cm-panel-close {
+  all: unset;
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 22px;
+  line-height: 1;
+}
+
+#caption-mode-overlay .cm-panel-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+#caption-mode-overlay .cm-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 10px 24px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
+#caption-mode-overlay .cm-line {
+  all: unset;
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  cursor: pointer;
+  padding: 9px 10px;
+  border-radius: 8px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.62);
+  transition: background 0.12s ease;
+}
+
+#caption-mode-overlay .cm-line:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+#caption-mode-overlay .cm-line.cm-hidden {
+  display: none;
+}
+
+#caption-mode-overlay .cm-line.current {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+#caption-mode-overlay .cm-line-time {
+  flex: none;
+  min-width: 46px;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.4);
+  padding-top: 2px;
+}
+
+#caption-mode-overlay .cm-line.current .cm-line-time {
+  color: rgba(255, 214, 102, 0.9);
+}
+
+/* The captions and the controls keep the space the panel does not take,
+   rather than running underneath it. */
+#caption-mode-overlay.cm-paneled .cm-stage {
+  width: calc(100vw - min(520px, 42vw) - 16vw);
+}
+
+#caption-mode-overlay.cm-paneled .cm-controls {
+  right: min(520px, 42vw);
+}
+
+/* The exit button steps aside for the panel instead of hiding behind it. */
+#caption-mode-overlay.cm-paneled .cm-exit {
+  right: calc(min(520px, 42vw) + 24px);
+}

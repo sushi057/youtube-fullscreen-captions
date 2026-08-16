@@ -1,0 +1,218 @@
+// Turning a transcript into what the reader sees.
+//
+// A classic script with one global, because Chrome content scripts cannot
+// import modules without a bundler, and the site's player page loads plain
+// scripts already. The same file serves the overlay and the site.
+
+// eslint-disable-next-line no-unused-vars
+const CaptionView = (() => {
+  // Flatten a transcript to a single word stream in playback order.
+  // Videos with only manually-authored subtitles carry no per-word timing, so
+  // their words are spread evenly across each phrase. Flow mode still works.
+  function flatten(data) {
+    if (data.hasWordTiming && (data.words || []).length) {
+      return data.words.map((w) => ({ start: w.start, text: w.text }));
+    }
+    const words = [];
+    for (const p of data.phrases || []) {
+      const toks = p.text.split(/\s+/).filter(Boolean);
+      const dur = p.dur > 0 ? p.dur : toks.length * 0.3;
+      toks.forEach((t, k) =>
+        words.push({
+          start: p.start + (dur * k) / Math.max(1, toks.length),
+          text: t,
+        }),
+      );
+    }
+    return words;
+  }
+
+  // Index of the last word whose start is at or before `now`; -1 before the
+  // first word. Binary search, because this runs ten times a second.
+  function lastIndexBefore(words, now) {
+    let lo = 0;
+    let hi = words.length - 1;
+    let result = -1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (words[mid].start <= now) {
+        result = mid;
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
+    }
+    return result;
+  }
+
+  // One lowercased string of the whole transcript, plus a map back from any
+  // character to the word it belongs to. Built once, so searching is a plain
+  // indexOf scan however long the video is.
+  function buildSearchIndex(words) {
+    const parts = [];
+    const wordAt = [];
+    let pos = 0;
+    words.forEach((w, i) => {
+      const text = w.text.toLowerCase();
+      for (let k = 0; k < text.length; k++) wordAt[pos + k] = i;
+      parts.push(text);
+      pos += text.length;
+      wordAt[pos] = i; // the joining space belongs to the word before it
+      pos += 1;
+    });
+    return { haystack: parts.join(" "), wordAt };
+  }
+
+  // Word indexes that begin a match. A query spanning several words counts once.
+  function search(index, query) {
+    const q = (query || "").trim().toLowerCase();
+    const hits = [];
+    if (!q) return hits;
+    let from = 0;
+    for (;;) {
+      const at = index.haystack.indexOf(q, from);
+      if (at === -1) break;
+      const wordIndex = index.wordAt[at];
+      if (hits[hits.length - 1] !== wordIndex) hits.push(wordIndex);
+      from = at + 1;
+    }
+    return hits;
+  }
+
+  // Group words into pages that each fill the caption box. Measured against an
+  // offscreen probe that matches the real box's width and font, so a page is
+  // always as much text as actually fits.
+  //
+  // `maxHeight` is the room the box really has. Without it a page is always
+  // `maxLines` tall, and on a wide, short window that is taller than the stage
+  // — the caption font grows with viewport width while the stage shrinks with
+  // viewport height — so the text runs over the controls.
+  function packPages(words, captionEl, maxLines, maxHeight) {
+    const pages = [];
+    const pageOfWord = [];
+    if (!words.length || !captionEl) return { pages, pageOfWord };
+
+    // The probe copies the real caption's typography rather than naming a CSS
+    // class. It used to set className "caption", which only the site's
+    // stylesheet defines — so inside the extension overlay, where the class is
+    // "cm-caption", the probe measured at the browser default of 16px while
+    // the captions drew at 112px. Every page then held about seven times the
+    // text that fits.
+    const real = getComputedStyle(captionEl);
+    const probe = document.createElement("div");
+    probe.style.position = "absolute";
+    probe.style.visibility = "hidden";
+    probe.style.left = "-9999px";
+    probe.style.top = "0";
+    probe.style.width = `${captionEl.clientWidth}px`;
+    for (const prop of [
+      "fontFamily",
+      "fontSize",
+      "fontWeight",
+      "fontStyle",
+      "lineHeight",
+      "letterSpacing",
+      "wordSpacing",
+      "textTransform",
+      "overflowWrap",
+      "wordBreak",
+      "whiteSpace",
+      "textWrap",
+      "hyphens",
+    ]) {
+      probe.style[prop] = real[prop];
+    }
+    (captionEl.parentElement || document.body).appendChild(probe);
+
+    const lineH = parseFloat(getComputedStyle(probe).lineHeight) || 60;
+    // Never taller than the room available, and never less than one line.
+    const maxH = Math.max(
+      lineH,
+      Math.min(lineH * maxLines + lineH * 0.15, maxHeight || Infinity),
+    );
+
+    // Reading scrollHeight forces a layout, so the cost is the number of
+    // measurements, not the number of words. Measuring after every word meant
+    // one layout per word — about a second for a two-hour talk. Growing the
+    // candidate and then bisecting it costs roughly a dozen per page.
+    const fits = (from, count) => {
+      // renderPage draws each word with a trailing space, so the probe has to
+      // as well. Dropping the last one changes where the line wraps.
+      probe.textContent = words
+        .slice(from, from + count)
+        .map((w) => w.text + " ")
+        .join("");
+      return probe.scrollHeight <= maxH;
+    };
+
+    let start = 0;
+    while (start < words.length) {
+      const left = words.length - start;
+
+      // Grow until it no longer fits, keeping the last size that did.
+      let good = 0;
+      let probeCount = 1;
+      while (probeCount <= left && fits(start, probeCount)) {
+        good = probeCount;
+        probeCount *= 2;
+      }
+
+      // Bisecting needs an upper bound that is known NOT to fit. Growth gives
+      // one only when it stopped because a size failed, not because it ran out
+      // of words — so that case is tested before assuming it.
+      let count;
+      if (good >= left) {
+        count = left; // the rest of the transcript fits on this page
+      } else if (probeCount > left && fits(start, left)) {
+        count = left;
+      } else {
+        let low = good;
+        let high = Math.min(probeCount, left);
+        while (low + 1 < high) {
+          const mid = (low + high) >> 1;
+          if (fits(start, mid)) low = mid;
+          else high = mid;
+        }
+        count = Math.max(1, low); // never make a page of no words
+      }
+
+      pages.push({ start, end: start + count - 1 });
+      start += count;
+    }
+    probe.remove();
+
+    pages.forEach((p, idx) => {
+      for (let i = p.start; i <= p.end; i++) pageOfWord[i] = idx;
+    });
+    return { pages, pageOfWord };
+  }
+
+  // Draw one page. The whole page is always drawn so the box keeps a stable
+  // shape; in flow mode the not-yet-spoken words are invisible but keep their
+  // space, and reveal as they are spoken.
+  function renderPage(el, words, page, options) {
+    const { wi, mode, grew, found } = options;
+    el.innerHTML = "";
+    for (let i = page.start; i <= page.end; i++) {
+      const span = document.createElement("span");
+      const shown = mode === "phrase" || i <= wi;
+      const animate = mode === "flow" && grew && i === wi;
+      span.className =
+        "word" +
+        (shown ? "" : " hidden") +
+        (animate ? " new" : "") +
+        (i === found ? " found" : "");
+      span.textContent = words[i].text + " ";
+      el.appendChild(span);
+    }
+  }
+
+  return {
+    flatten,
+    lastIndexBefore,
+    buildSearchIndex,
+    search,
+    packPages,
+    renderPage,
+  };
+})();

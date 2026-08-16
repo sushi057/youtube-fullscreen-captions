@@ -23,7 +23,7 @@ const DEFAULT_RETRY_DELAY_MS = 400;
  *   "unavailable"     — the video is private, removed, or blocked here.
  *   "upstream_failed" — YouTube did not answer usefully. Not the video's fault.
  */
-class TranscriptError extends Error {
+export class TranscriptError extends Error {
   constructor(code, message) {
     super(message || code);
     this.name = "TranscriptError";
@@ -132,7 +132,7 @@ function round3(n) {
  * The caller does not have to know which format arrived: srv3 is tried first,
  * and srv1 answers only when srv3 found nothing.
  */
-function parseTimedText(xml) {
+export function parseTimedText(xml) {
   if (!xml) return { hasWordTiming: false, phrases: [], words: [] };
   const srv3 = parseSrv3(xml);
   if (srv3.phrases.length) return srv3;
@@ -229,7 +229,7 @@ function assertPlayable(data) {
  * @returns {Promise<{hasWordTiming: boolean, phrases: Array, words: Array}>}
  * @throws {TranscriptError}
  */
-async function fetchTranscript(videoId, options = {}) {
+export async function fetchTranscript(videoId, options = {}) {
   const fetchImpl = options.fetchImpl || globalThis.fetch;
   const retryOpts = {
     retries: options.retries ?? DEFAULT_RETRIES,
@@ -278,7 +278,7 @@ async function fetchTranscript(videoId, options = {}) {
  * Least-recently-used cache. Transcripts never change once published, so
  * entries need no expiry — only a ceiling on how many are held.
  */
-function createCache(max) {
+export function createCache(max) {
   const map = new Map();
   return {
     get(key) {
@@ -299,9 +299,27 @@ function createCache(max) {
   };
 }
 
-module.exports = {
-  TranscriptError,
-  parseTimedText,
-  fetchTranscript,
-  createCache,
-};
+// --- Sharing ------------------------------------------------------------
+
+/**
+ * Cut the words spoken between two times.
+ *
+ * A shared link carries only a video id and two times, so this is what turns
+ * those three values back into a quote. The range is inclusive at both ends.
+ *
+ * @param {Array<{start: number, text: string}>} words
+ * @param {number} a one end of the range, in seconds
+ * @param {number} b the other end; the two may be given in any order
+ * @returns {{words: Array, text: string, start: number, end: number}}
+ */
+export function cutRange(words, a, b) {
+  const from = Math.min(a, b);
+  const to = Math.max(a, b);
+  const list = (words || []).filter((w) => w.start >= from && w.start <= to);
+  return {
+    words: list,
+    text: list.map((w) => w.text).join(" "),
+    start: list.length ? list[0].start : from,
+    end: list.length ? list[list.length - 1].start : to,
+  };
+}

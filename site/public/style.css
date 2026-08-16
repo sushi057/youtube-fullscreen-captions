@@ -73,19 +73,6 @@ body.hide-cursor {
   opacity: 0;
 }
 
-/* Words are seek handles: clicking one jumps the audio to where it is spoken. */
-.caption .word:hover {
-  cursor: pointer;
-  text-decoration: underline;
-  text-decoration-thickness: 0.06em;
-  text-underline-offset: 0.12em;
-  text-decoration-color: rgba(255, 255, 255, 0.45);
-}
-
-.caption .word.hidden:hover {
-  text-decoration: none;
-}
-
 /* The word a transcript search landed on. */
 .caption .word.found {
   background: rgba(255, 214, 102, 0.28);

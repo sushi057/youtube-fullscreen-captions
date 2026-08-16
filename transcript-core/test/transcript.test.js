@@ -1,12 +1,12 @@
-const test = require("node:test");
-const assert = require("node:assert");
+import test from "node:test";
+import assert from "node:assert";
 
-const {
+import {
   parseTimedText,
   fetchTranscript,
   TranscriptError,
   createCache,
-} = require("../transcript");
+} from "../transcript.js";
 
 // --- Fixtures -----------------------------------------------------------
 

@@ -52,8 +52,7 @@ let seeking = false;
 let hideTimer = null;
 // search
 let searchOpen = false;
-let searchHaystack = ""; // whole transcript, lowercased
-let searchWordAt = []; // searchWordAt[charIndex] = index into allWords
+let searchIndex = null; // haystack + char-to-word map, built once
 let matches = []; // word indexes that begin a match
 let matchAt = -1; // position within `matches`
 let foundWord = -1; // word index to highlight, or -1
@@ -96,24 +95,7 @@ async function loadTranscript() {
       return false;
     }
 
-    // Flatten to a single word stream. Use real word timing when present;
-    // otherwise spread each phrase's words evenly across its duration so flow
-    // mode still works.
-    allWords = [];
-    if (data.hasWordTiming && (data.words || []).length) {
-      allWords = data.words.map((w) => ({ start: w.start, text: w.text }));
-    } else {
-      for (const p of phrases) {
-        const toks = p.text.split(/\s+/).filter(Boolean);
-        const dur = p.dur > 0 ? p.dur : toks.length * 0.3;
-        toks.forEach((t, k) =>
-          allWords.push({
-            start: p.start + (dur * k) / Math.max(1, toks.length),
-            text: t,
-          }),
-        );
-      }
-    }
+    allWords = CaptionView.flatten(data);
     return true;
   } catch (err) {
     console.error("transcript fetch failed:", err);
@@ -124,68 +106,24 @@ async function loadTranscript() {
 
 // --- Rendering ----------------------------------------------------------
 
-function lastIndexBefore(arr, now, key = "start") {
-  let lo = 0;
-  let hi = arr.length - 1;
-  let result = -1;
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1;
-    if (arr[mid][key] <= now) {
-      result = mid;
-      lo = mid + 1;
-    } else {
-      hi = mid - 1;
-    }
-  }
-  return result;
-}
-
 // Group all words into pages that each fill the caption box (up to MAX_LINES).
-// Measured against an offscreen probe matching the caption's width and font.
 function computePages() {
-  pages = [];
-  pageOfWord = [];
-  if (!allWords.length) return;
-
-  const probe = document.createElement("div");
-  probe.className = "caption";
-  probe.style.position = "absolute";
-  probe.style.visibility = "hidden";
-  probe.style.left = "-9999px";
-  probe.style.top = "0";
-  probe.style.width = `${stageEl.clientWidth}px`;
-  document.body.appendChild(probe);
-
-  const lineH = parseFloat(getComputedStyle(probe).lineHeight) || 60;
-  const maxH = lineH * MAX_LINES + lineH * 0.15;
-
-  let start = 0;
-  for (let i = 0; i < allWords.length; i++) {
-    const span = document.createElement("span");
-    span.className = "word";
-    span.textContent = allWords[i].text + " ";
-    probe.appendChild(span);
-    if (probe.scrollHeight > maxH && i > start) {
-      // This word overflows the box → it begins the next page.
-      probe.removeChild(span);
-      pages.push({ start, end: i - 1 });
-      start = i;
-      probe.innerHTML = "";
-      probe.appendChild(span);
-    }
-  }
-  pages.push({ start, end: allWords.length - 1 });
-  document.body.removeChild(probe);
-
-  pages.forEach((p, idx) => {
-    for (let i = p.start; i <= p.end; i++) pageOfWord[i] = idx;
-  });
+  const stage = document.getElementById("stage");
+  const packed = CaptionView.packPages(
+    allWords,
+    stageEl,
+    MAX_LINES,
+    stage.clientHeight,
+  );
+  pages = packed.pages;
+  pageOfWord = packed.pageOfWord;
 }
 
 function renderStage(now) {
   if (!allWords.length || !pages.length) return;
 
-  const wi = lastIndexBefore(allWords, now); // current spoken word, -1 before start
+  // current spoken word, -1 before start
+  const wi = CaptionView.lastIndexBefore(allWords, now);
   const curWi = Math.max(0, wi);
   const pageIdx = pageOfWord[curWi] ?? 0;
   const page = pages[pageIdx];
@@ -204,22 +142,12 @@ function renderStage(now) {
   lastMode = mode;
   lastFound = foundWord;
 
-  // Render the whole page so the box keeps a stable shape; in flow mode the
-  // not-yet-spoken words are invisible (space reserved) and reveal as spoken.
-  stageEl.innerHTML = "";
-  for (let i = page.start; i <= page.end; i++) {
-    const span = document.createElement("span");
-    const shown = mode === "phrase" || i <= wi;
-    const animate = mode === "flow" && grew && i === wi;
-    span.className =
-      "word" +
-      (shown ? "" : " hidden") +
-      (animate ? " new" : "") +
-      (i === foundWord ? " found" : "");
-    span.dataset.i = i; // makes the word clickable as a seek target
-    span.textContent = allWords[i].text + " ";
-    stageEl.appendChild(span);
-  }
+  CaptionView.renderPage(stageEl, allWords, page, {
+    wi,
+    mode,
+    grew,
+    found: foundWord,
+  });
 }
 
 function rerender() {
@@ -232,8 +160,7 @@ function rerender() {
 
 // --- Seeking to a word --------------------------------------------------
 
-// Words carry their own timing, so the caption text is also a seek control:
-// click a word and the audio moves to where that word is spoken.
+// Used by search, to move playback to a match.
 function seekToWord(i) {
   if (!player || !ready) return;
   const word = allWords[i];
@@ -242,54 +169,20 @@ function seekToWord(i) {
   rerender();
 }
 
-stageEl.addEventListener("click", (e) => {
-  const span = e.target.closest(".word");
-  if (!span || span.dataset.i === undefined) return;
-  // Stop the page-wide click handler from also toggling play.
-  e.stopPropagation();
-  seekToWord(parseInt(span.dataset.i, 10));
-  wake();
-});
-
 // --- Transcript search --------------------------------------------------
 
-// One lowercased string of the whole transcript, plus a map back from any
-// character to the word it belongs to. Built once, so searching is a plain
-// indexOf scan however long the video is.
 function buildSearchIndex() {
-  const parts = [];
-  searchWordAt = [];
-  let pos = 0;
-  allWords.forEach((w, i) => {
-    const text = w.text.toLowerCase();
-    for (let k = 0; k < text.length; k++) searchWordAt[pos + k] = i;
-    parts.push(text);
-    pos += text.length;
-    searchWordAt[pos] = i; // the joining space belongs to the word before it
-    pos += 1;
-  });
-  searchHaystack = parts.join(" ");
+  searchIndex = CaptionView.buildSearchIndex(allWords);
 }
 
 function runSearch(query) {
-  const q = query.trim().toLowerCase();
-  matches = [];
+  matches = CaptionView.search(searchIndex, query);
   matchAt = -1;
-  if (!q) {
+  if (!query.trim()) {
     searchCount.textContent = "";
     searchCount.classList.remove("none");
     setFound(-1);
     return;
-  }
-
-  let from = 0;
-  for (;;) {
-    const hit = searchHaystack.indexOf(q, from);
-    if (hit === -1) break;
-    const wordIndex = searchWordAt[hit];
-    // A query spanning several words still counts once, at its first word.
-    if (matches[matches.length - 1] !== wordIndex) matches.push(wordIndex);
-    from = hit + 1;
   }
 
   searchCount.classList.toggle("none", matches.length === 0);
@@ -299,7 +192,10 @@ function runSearch(query) {
     return;
   }
   // Start from whatever is playing now, so "next" moves forward from here.
-  const now = Math.max(0, lastIndexBefore(allWords, player.getCurrentTime()));
+  const now = Math.max(
+    0,
+    CaptionView.lastIndexBefore(allWords, player.getCurrentTime()),
+  );
   const ahead = matches.findIndex((w) => w >= now);
   matchAt = ahead === -1 ? 0 : ahead;
   goToMatch(matchAt);
