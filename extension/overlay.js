@@ -113,7 +113,7 @@ const CaptionOverlay = (() => {
     el.innerHTML = `
       <div class="cm-badge">
         <div class="cm-title-line">
-          <span class="cm-dot"></span><span class="cm-title"></span>
+          <span class="cm-title"></span>
         </div>
         <div class="cm-author"></div>
       </div>
@@ -157,17 +157,19 @@ const CaptionOverlay = (() => {
               <div class="cm-seek-fill"></div>
               <div class="cm-seek-knob"></div>
             </div>
-            <span class="cm-dur-time">0:00</span>
+            <span class="cm-dur-time" role="button" tabindex="0"
+                  title="Show time left">0:00</span>
           </div>
           <button class="cm-pill cm-mode" type="button" aria-label="Caption mode">
-            <svg viewBox="0 0 24 24"><path d="M19 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm-8 7H9.5v-.5h-2v3h2V13H11v1a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v1zm7 0h-1.5v-.5h-2v3h2V13H18v1a1 1 0 0 1-1 1h-3a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v1z"/></svg>
+            <svg class="cm-icon-flow" viewBox="0 0 24 24"><path d="M3 8.2c1.6-2.1 3.2-3.1 4.8-3.1 2.4 0 3.6 2 5.1 3.6 1 1.1 2 1.7 3 1.7 1.1 0 2.1-.7 3.1-2l2 1.5c-1.6 2.1-3.2 3.1-4.8 3.1-2.4 0-3.6-2-5.1-3.6-1-1.1-2-1.7-3-1.7-1.1 0-2.1.7-3.1 2L3 8.2zm0 8c1.6-2.1 3.2-3.1 4.8-3.1 2.4 0 3.6 2 5.1 3.6 1 1.1 2 1.7 3 1.7 1.1 0 2.1-.7 3.1-2l2 1.5c-1.6 2.1-3.2 3.1-4.8 3.1-2.4 0-3.6-2-5.1-3.6-1-1.1-2-1.7-3-1.7-1.1 0-2.1.7-3.1 2l-2-1.5z"/></svg>
+            <svg class="cm-icon-phrase" viewBox="0 0 24 24"><path d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9.4L5 21.2V17H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm2.5 4.4a1 1 0 0 0 0 2h11a1 1 0 0 0 0-2h-11zm0 4a1 1 0 0 0 0 2h6.5a1 1 0 0 0 0-2H6.5z"/></svg>
             <span class="cm-mode-label">Flow</span>
           </button>
           <button class="cm-speed-btn" type="button" aria-label="Playback speed">1&times;</button>
           <div class="cm-type-wrap">
             <div class="cm-type-menu hidden"></div>
             <button class="cm-ico cm-small cm-type-btn" type="button" aria-label="Text options">
-              <svg viewBox="0 0 24 24"><path d="M5 17.6 9.6 5h2.1l4.6 12.6h-2.1l-1.1-3.2H8.2l-1.1 3.2H5zm3.8-4.9h3.6l-1.8-5.1-1.8 5.1zM17.5 17.6v-1.5l3.2-3.6c.3-.3.5-.6.5-.9 0-.5-.4-.8-1-.8s-1 .3-1.1.9h-1.6c.1-1.4 1.1-2.3 2.7-2.3 1.6 0 2.6.9 2.6 2.1 0 .7-.3 1.3-1.1 2.1l-2 2.2h3.2v1.8h-5.4z"/></svg>
+              <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54A.48.48 0 0 0 13.9 2h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.71 8.47a.49.49 0 0 0 .12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg>
             </button>
           </div>
           <button class="cm-ico cm-small cm-transcript-btn" type="button" aria-label="Show full transcript">
@@ -415,11 +417,26 @@ const CaptionOverlay = (() => {
 
   // --- Controls ---------------------------------------------------------
 
+  // Hours get their own field, the way every player writes them. Without this
+  // a half-hour into a two-hour talk read as 103:18.
   function formatTime(s) {
     if (!isFinite(s) || s < 0) s = 0;
-    const m = Math.floor(s / 60);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
     const sec = Math.floor(s % 60);
-    return `${m}:${sec.toString().padStart(2, "0")}`;
+    const mm = h ? String(m).padStart(2, "0") : String(m);
+    return `${h ? `${h}:` : ""}${mm}:${String(sec).padStart(2, "0")}`;
+  }
+
+  // The right-hand number answers either "how long is this?" or "how much is
+  // left?". Clicking it swaps which, as YouTube's own does.
+  let showRemaining = false;
+
+  function setTimeLabels(cur, dur) {
+    root.querySelector(".cm-cur-time").textContent = formatTime(cur);
+    root.querySelector(".cm-dur-time").textContent = showRemaining
+      ? `-${formatTime(Math.max(0, dur - cur))}`
+      : formatTime(dur);
   }
 
   function togglePlay() {
@@ -437,10 +454,14 @@ const CaptionOverlay = (() => {
     root.classList.toggle("cm-hide-cursor", idle);
   }
 
+  // Paused means the viewer stopped to do something. Hiding the controls then
+  // takes away the very buttons they stopped for, so the chrome stays up until
+  // playback runs again.
   function wake() {
     if (!root) return;
     setIdle(false);
     clearTimeout(hideTimer);
+    if (video && video.paused) return;
     hideTimer = setTimeout(() => setIdle(true), 2600);
   }
 
@@ -457,10 +478,7 @@ const CaptionOverlay = (() => {
 
   function updateSeek() {
     const dur = video.duration || 0;
-    root.querySelector(".cm-cur-time").textContent = formatTime(
-      video.currentTime,
-    );
-    root.querySelector(".cm-dur-time").textContent = formatTime(dur);
+    setTimeLabels(video.currentTime, dur);
     if (!seeking && dur > 0) {
       const pct = Math.max(0, Math.min(100, (video.currentTime / dur) * 100));
       root.querySelector(".cm-seek-fill").style.width = `${pct}%`;
@@ -487,6 +505,7 @@ const CaptionOverlay = (() => {
     mode = next;
     root.querySelector(".cm-mode-label").textContent =
       mode === "flow" ? "Flow" : "Phrase";
+    root.classList.toggle("cm-mode-phrase", mode === "phrase");
     rerender();
     wake();
   }
@@ -500,24 +519,52 @@ const CaptionOverlay = (() => {
 
   // Few choices on purpose. Free control over size and face is a settings
   // screen; this is a reading tool, so each option has one clear reason.
+  // Each face carries its own weight. A serif at the sans's 800 reads as a
+  // slab; the same page in Georgia needs far less to hold the same colour.
   const FONTS = [
-    { id: "sans", label: "Sans", stack: '"Archivo", "Roboto", sans-serif' },
-    { id: "serif", label: "Serif", stack: 'Georgia, "Times New Roman", serif' },
-    { id: "mono", label: "Mono", stack: '"Roboto Mono", Consolas, monospace' },
+    {
+      id: "sans",
+      label: "Sans",
+      stack: '"Archivo", "Roboto", sans-serif',
+      weight: 800,
+    },
+    {
+      id: "serif",
+      label: "Serif",
+      stack: 'Georgia, "Times New Roman", serif',
+      weight: 500,
+    },
+    {
+      id: "mono",
+      label: "Mono",
+      stack: '"Roboto Mono", Consolas, monospace',
+      weight: 600,
+    },
     {
       id: "dyslexic",
       label: "Dyslexic",
       stack: '"OpenDyslexic", "Comic Sans MS", "Trebuchet MS", sans-serif',
+      weight: 700,
     },
   ];
   const SIZES = [
-    { id: "s", label: "S", scale: 0.75 },
-    { id: "m", label: "M", scale: 1 },
-    { id: "l", label: "L", scale: 1.3 },
+    { id: "s", label: "Small", scale: 0.75 },
+    { id: "m", label: "Medium", scale: 1 },
+    { id: "l", label: "Large", scale: 1.3 },
+  ];
+  // Off-white first, because reading white-on-black for an hour is what the
+  // rest of these are an answer to.
+  const COLORS = [
+    { id: "cream", label: "Off white", value: "#f2ede3" },
+    { id: "white", label: "White", value: "#ffffff" },
+    { id: "amber", label: "Amber", value: "#ffcf5c" },
+    { id: "green", label: "Green", value: "#8ce39a" },
+    { id: "blue", label: "Blue", value: "#7fc4ff" },
+    { id: "pink", label: "Pink", value: "#ff9ec4" },
   ];
   const TYPE_KEY = "captionMode:type";
 
-  let typeChoice = { font: "sans", size: "m" };
+  let typeChoice = { font: "sans", size: "m", color: "cream" };
 
   function loadTypeChoice() {
     try {
@@ -531,8 +578,11 @@ const CaptionOverlay = (() => {
   function applyTypeChoice() {
     const font = FONTS.find((f) => f.id === typeChoice.font) || FONTS[0];
     const size = SIZES.find((s) => s.id === typeChoice.size) || SIZES[1];
+    const color = COLORS.find((c) => c.id === typeChoice.color) || COLORS[0];
     root.style.setProperty("--cm-font", font.stack);
+    root.style.setProperty("--cm-weight", String(font.weight));
     root.style.setProperty("--cm-scale", String(size.scale));
+    root.style.setProperty("--cm-color", color.value);
     try {
       localStorage.setItem(TYPE_KEY, JSON.stringify(typeChoice));
     } catch {
@@ -550,7 +600,7 @@ const CaptionOverlay = (() => {
     const menu = root.querySelector(".cm-type-menu");
     menu.innerHTML = "";
 
-    const row = (title, items, key) => {
+    const row = (title, items, key, kind = "") => {
       const group = document.createElement("div");
       group.className = "cm-type-group";
       const label = document.createElement("div");
@@ -558,14 +608,23 @@ const CaptionOverlay = (() => {
       label.textContent = title;
       group.appendChild(label);
       const opts = document.createElement("div");
-      opts.className = "cm-type-opts";
+      opts.className = "cm-type-opts" + (kind ? ` cm-opts-${kind}` : "");
       for (const item of items) {
         const b = document.createElement("button");
         b.type = "button";
         b.className =
-          "cm-type-opt" + (typeChoice[key] === item.id ? " active" : "");
-        b.textContent = item.label;
+          "cm-type-opt" +
+          (kind ? ` cm-type-${kind}` : "") +
+          (typeChoice[key] === item.id ? " active" : "");
+        if (kind === "swatch") {
+          b.style.background = item.value;
+          b.title = item.label;
+          b.setAttribute("aria-label", item.label);
+        } else {
+          b.textContent = item.label;
+        }
         if (item.stack) b.style.fontFamily = item.stack;
+        if (item.weight) b.style.fontWeight = String(item.weight);
         b.addEventListener("click", (e) => {
           e.stopPropagation();
           typeChoice = { ...typeChoice, [key]: item.id };
@@ -579,8 +638,9 @@ const CaptionOverlay = (() => {
       menu.appendChild(group);
     };
 
-    row("Font", FONTS, "font");
-    row("Size", SIZES, "size");
+    row("Font", FONTS, "font", "font");
+    row("Size", SIZES, "size", "size");
+    row("Colour", COLORS, "color", "swatch");
   }
 
   function setTypeMenu(open) {
@@ -754,6 +814,9 @@ const CaptionOverlay = (() => {
       updateSeek();
       updateVolumeUI();
       updateSpeedLabel();
+      // A pause anywhere — this overlay, YouTube's own keys — must bring the
+      // controls back and hold them; a play restarts the hide timer.
+      wake();
     };
     for (const ev of [
       "play",
@@ -788,6 +851,14 @@ const CaptionOverlay = (() => {
     on(".cm-transcript-btn", "click", () =>
       setPanel(root.querySelector(".cm-panel").classList.contains("hidden")),
     );
+    on(".cm-dur-time", "click", () => {
+      showRemaining = !showRemaining;
+      root.querySelector(".cm-dur-time").title = showRemaining
+        ? "Show total time"
+        : "Show time left";
+      updateSeek();
+      wake();
+    });
     on(".cm-mute", "click", toggleMute);
     on(".cm-fullscreen", "click", toggleFullscreen);
 
@@ -822,9 +893,8 @@ const CaptionOverlay = (() => {
         const pct = ratio * 100;
         root.querySelector(".cm-seek-fill").style.width = `${pct}%`;
         root.querySelector(".cm-seek-knob").style.left = `${pct}%`;
-        root.querySelector(".cm-cur-time").textContent = formatTime(
-          ratio * (video.duration || 0),
-        );
+        const dur = video.duration || 0;
+        setTimeLabels(ratio * dur, dur);
       };
       preview(e);
       const up = () => {
@@ -928,12 +998,15 @@ const CaptionOverlay = (() => {
     return Boolean(root);
   }
 
+  // Click-to-pause belongs to the reading area only. It used to be the whole
+  // layer, so a miss between two buttons in the control bar paused the video.
+  const CHROME = ".cm-controls, .cm-panel, .cm-search, .cm-exit, .cm-badge";
+
   document.addEventListener("click", (e) => {
     if (!root) return;
-    if (e.target.closest("#caption-mode-overlay")) {
-      if (video.paused) video.play();
-      else video.pause();
-    }
+    if (!e.target.closest("#caption-mode-overlay")) return;
+    if (e.target.closest(CHROME)) return;
+    togglePlay();
   });
 
   // keydown targets are not always Elements, so closest() needs a guard.

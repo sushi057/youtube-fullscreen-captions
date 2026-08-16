@@ -26,24 +26,15 @@ body.cm-open {
 #caption-mode-overlay .cm-title-line {
   display: flex;
   align-items: center;
-  font-size: 19px;
+  /* Sized to sit at the same level as the control bar, not below it. */
+  font-size: 26px;
   font-weight: 700;
   letter-spacing: -0.01em;
 }
 
-#caption-mode-overlay .cm-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #fff;
-  margin-right: 11px;
-  flex: none;
-}
-
 #caption-mode-overlay .cm-author {
-  margin-top: 4px;
-  margin-left: 18px;
-  font-size: 14px;
+  margin-top: 5px;
+  font-size: 16px;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.6);
 }
@@ -63,10 +54,10 @@ body.cm-open {
   /* The reader picks the face and the size; the packer re-measures after. */
   font-family: var(--cm-font, "Archivo", "Roboto", sans-serif);
   font-size: calc(clamp(2.6rem, 6vw, 7rem) * var(--cm-scale, 1));
-  font-weight: 800;
+  font-weight: var(--cm-weight, 800);
   line-height: 1.15;
   letter-spacing: -0.03em;
-  color: #fff;
+  color: var(--cm-color, #f2ede3);
   text-wrap: pretty;
   overflow-wrap: normal;
 }
@@ -202,9 +193,9 @@ body.cm-open {
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   height: 38px;
-  padding: 0 14px;
+  padding: 0 10px;
   border-radius: 7px;
   color: #fff;
   opacity: 0.9;
@@ -224,11 +215,26 @@ body.cm-open {
   fill: currentColor;
 }
 
-#caption-mode-overlay .cm-pill span {
+/* Mark and word belong together, so they sit tight; the pill's own padding
+   then matches the bar's gap, and the space to the time and the speed reads
+   the same on both sides. */
+#caption-mode-overlay .cm-mode-label {
   font-size: 16px;
   font-weight: 700;
   letter-spacing: 0.04em;
-  min-width: 54px;
+}
+
+/* Flow and Phrase carry their own mark, so the pill is readable at a glance. */
+#caption-mode-overlay .cm-icon-phrase {
+  display: none;
+}
+
+#caption-mode-overlay.cm-mode-phrase .cm-icon-flow {
+  display: none;
+}
+
+#caption-mode-overlay.cm-mode-phrase .cm-icon-phrase {
+  display: block;
 }
 
 #caption-mode-overlay .cm-speed-wrap {
@@ -242,7 +248,7 @@ body.cm-open {
   align-items: center;
   justify-content: center;
   height: 44px;
-  padding: 0 14px;
+  padding: 0 9px;
   border-radius: 7px;
   color: #fff;
   opacity: 0.9;
@@ -314,6 +320,21 @@ body.cm-open {
   font-variant-numeric: tabular-nums;
   min-width: 46px;
   text-align: center;
+}
+
+/* The total swaps to the time left, so it reads as something you can press. */
+#caption-mode-overlay .cm-dur-time {
+  cursor: pointer;
+  /* Matched to the speed button's padding, so the mode pill between them
+     keeps the same air on its left and its right. */
+  padding: 3px 9px;
+  border-radius: 5px;
+  transition: background 0.15s ease;
+}
+
+#caption-mode-overlay .cm-dur-time:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
 }
 
 #caption-mode-overlay .cm-seek-track {
@@ -508,7 +529,7 @@ body.cm-open {
   flex-direction: column;
   gap: 12px;
   padding: 12px;
-  min-width: 190px;
+  min-width: 250px;
   border-radius: 12px;
   background: rgba(18, 18, 18, 0.97);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -537,8 +558,7 @@ body.cm-open {
 #caption-mode-overlay .cm-type-opt {
   all: unset;
   cursor: pointer;
-  flex: 1 0 auto;
-  min-width: 40px;
+  box-sizing: border-box;
   padding: 7px 10px;
   text-align: center;
   border-radius: 7px;
@@ -557,6 +577,43 @@ body.cm-open {
   background: #fff;
   color: #000;
   font-weight: 800;
+}
+
+/* Each group keeps its own shape: the faces two by two, the three sizes on
+   one line, the colours three by two. Grid, so every cell is the same size
+   whatever word it holds. */
+#caption-mode-overlay .cm-opts-font {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+#caption-mode-overlay .cm-opts-size {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+#caption-mode-overlay .cm-type-size {
+  padding: 7px 4px;
+  font-size: 12px;
+}
+
+#caption-mode-overlay .cm-opts-swatch {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+#caption-mode-overlay .cm-type-swatch {
+  height: 26px;
+  padding: 0;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+#caption-mode-overlay .cm-type-swatch.active {
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.35),
+    0 0 0 2px #fff;
 }
 
 /* --- Full transcript panel ---------------------------------------------- */

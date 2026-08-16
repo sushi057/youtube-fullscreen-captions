@@ -13,11 +13,12 @@ const EXT = require("node:path").join(__dirname, "..", "extension");
 const view = fs.readFileSync(`${EXT}/caption-view.js`, "utf8");
 const css = fs.readFileSync(`${EXT}/overlay.css`, "utf8");
 
+// Face and weight travel together, the same pairing the overlay applies.
 const FONTS = {
-  sans: '"Archivo", "Roboto", sans-serif',
-  serif: 'Georgia, "Times New Roman", serif',
-  mono: '"Roboto Mono", Consolas, monospace',
-  dyslexic: '"OpenDyslexic", "Comic Sans MS", sans-serif',
+  sans: ['"Archivo", "Roboto", sans-serif', 800],
+  serif: ['Georgia, "Times New Roman", serif', 500],
+  mono: ['"Roboto Mono", Consolas, monospace', 600],
+  dyslexic: ['"OpenDyslexic", "Comic Sans MS", sans-serif', 700],
 };
 const SCALES = { s: 0.75, m: 1, l: 1.3 };
 
@@ -49,14 +50,15 @@ const SCALES = { s: 0.75, m: 1, l: 1.3 };
        <script>${view}</script>`,
     );
 
-    for (const [fontName, stack] of Object.entries(FONTS)) {
+    for (const [fontName, [stack, weight]] of Object.entries(FONTS)) {
       for (const [sizeName, scale] of Object.entries(SCALES)) {
         const res = await page.evaluate(
-          (stack, scale, lines) => {
+          (stack, weight, scale, lines) => {
             const root = document.getElementById("caption-mode-overlay");
             const cap = document.querySelector(".cm-caption");
             const stage = document.querySelector(".cm-stage");
             root.style.setProperty("--cm-font", stack);
+            root.style.setProperty("--cm-weight", String(weight));
             root.style.setProperty("--cm-scale", String(scale));
 
             const words = Array.from({ length: 1500 }, (_, i) => ({
@@ -95,6 +97,7 @@ const SCALES = { s: 0.75, m: 1, l: 1.3 };
             };
           },
           stack,
+          weight,
           scale,
           size.lines,
         );
