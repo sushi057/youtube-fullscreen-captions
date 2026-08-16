@@ -25,6 +25,7 @@ const browserGlobals = {
   navigator: "readonly",
   localStorage: "readonly",
   Element: "readonly",
+  requestAnimationFrame: "readonly",
 };
 
 const nodeGlobals = {

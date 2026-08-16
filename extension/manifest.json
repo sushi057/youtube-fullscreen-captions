@@ -15,6 +15,12 @@
       ],
       "css": ["content.css", "overlay.css"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://www.youtube.com/*"],
+      "js": ["intent.js", "feed.js"],
+      "css": ["feed.css"],
+      "run_at": "document_idle"
     }
   ],
   "icons": {
