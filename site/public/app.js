@@ -111,8 +111,7 @@ function computePages() {
   const stage = document.getElementById("stage");
   const packed = CaptionView.packPages(
     allWords,
-    document.body,
-    stageEl.clientWidth,
+    stageEl,
     MAX_LINES,
     stage.clientHeight,
   );

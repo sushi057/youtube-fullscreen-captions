@@ -43,12 +43,13 @@ module.exports = [
     ignores: ["node_modules/**", "site/node_modules/**"],
   },
   {
-    // Build tooling for the root package, which is CommonJS.
+    // Build tooling for the root package, which is CommonJS. Some of it also
+    // holds browser code, passed as strings to a headless page.
     files: ["scripts/**/*.js"],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "commonjs",
-      globals: nodeGlobals,
+      globals: { ...nodeGlobals, ...browserGlobals },
     },
     rules: {
       "no-unused-vars": "warn",

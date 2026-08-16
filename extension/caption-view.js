@@ -87,19 +87,42 @@ const CaptionView = (() => {
   // `maxLines` tall, and on a wide, short window that is taller than the stage
   // — the caption font grows with viewport width while the stage shrinks with
   // viewport height — so the text runs over the controls.
-  function packPages(words, probeParent, width, maxLines, maxHeight) {
+  function packPages(words, captionEl, maxLines, maxHeight) {
     const pages = [];
     const pageOfWord = [];
-    if (!words.length) return { pages, pageOfWord };
+    if (!words.length || !captionEl) return { pages, pageOfWord };
 
+    // The probe copies the real caption's typography rather than naming a CSS
+    // class. It used to set className "caption", which only the site's
+    // stylesheet defines — so inside the extension overlay, where the class is
+    // "cm-caption", the probe measured at the browser default of 16px while
+    // the captions drew at 112px. Every page then held about seven times the
+    // text that fits.
+    const real = getComputedStyle(captionEl);
     const probe = document.createElement("div");
-    probe.className = "caption";
     probe.style.position = "absolute";
     probe.style.visibility = "hidden";
     probe.style.left = "-9999px";
     probe.style.top = "0";
-    probe.style.width = `${width}px`;
-    probeParent.appendChild(probe);
+    probe.style.width = `${captionEl.clientWidth}px`;
+    for (const prop of [
+      "fontFamily",
+      "fontSize",
+      "fontWeight",
+      "fontStyle",
+      "lineHeight",
+      "letterSpacing",
+      "wordSpacing",
+      "textTransform",
+      "overflowWrap",
+      "wordBreak",
+      "whiteSpace",
+      "textWrap",
+      "hyphens",
+    ]) {
+      probe.style[prop] = real[prop];
+    }
+    (captionEl.parentElement || document.body).appendChild(probe);
 
     const lineH = parseFloat(getComputedStyle(probe).lineHeight) || 60;
     // Never taller than the room available, and never less than one line.
@@ -156,7 +179,7 @@ const CaptionView = (() => {
       pages.push({ start, end: start + count - 1 });
       start += count;
     }
-    probeParent.removeChild(probe);
+    probe.remove();
 
     pages.forEach((p, idx) => {
       for (let i = p.start; i <= p.end; i++) pageOfWord[i] = idx;

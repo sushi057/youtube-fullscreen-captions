@@ -7,10 +7,12 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "sync": "node scripts/sync-core.js",
-    "sync:check": "node scripts/sync-core.js --check"
+    "sync:check": "node scripts/sync-core.js --check",
+    "check:packing": "node scripts/check-packing.js"
   },
   "devDependencies": {
     "eslint": "^9.9.0",
-    "prettier": "^3.3.3"
+    "prettier": "^3.3.3",
+    "puppeteer-core": "^25.7.0"
   }
 }

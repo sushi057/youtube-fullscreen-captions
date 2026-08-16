@@ -275,8 +275,7 @@ const CaptionOverlay = (() => {
     const stage = root.querySelector(".cm-stage");
     const packed = CaptionView.packPages(
       words,
-      root,
-      stage.clientWidth,
+      root.querySelector(".cm-caption"),
       MAX_LINES,
       stage.clientHeight,
     );
