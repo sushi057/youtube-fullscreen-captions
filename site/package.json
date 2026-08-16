@@ -5,10 +5,10 @@
   "description": "Backend + static frontend for Caption Mode: plays a YouTube video's audio on a blank screen with large scrolling captions.",
   "type": "commonjs",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test test/*.test.js"
   },
   "dependencies": {
-    "express": "^4.19.2",
-    "youtube-transcript": "^1.2.1"
+    "express": "^4.19.2"
   }
 }

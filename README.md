@@ -16,6 +16,12 @@ Two caption presentations:
 The site also has a media-player control panel: seek bar, play/pause, ±10s,
 loop, volume, playback speed, and a phrase/word toggle.
 
+The caption text is itself a control:
+
+- **Click any word** to move the audio to where that word is spoken.
+- **Press `/`** to search the transcript. `Enter` goes to the next match,
+  `Shift`+`Enter` to the previous one, `Escape` closes the search.
+
 ## Repository layout
 
 ```
@@ -51,8 +57,26 @@ segments:
 { "videoId": "...", "hasWordTiming": true, "phrases": [...], "words": [...] }
 ```
 
-Videos without captions return `404 { "error": "no_transcript" }`, which the
-frontend shows as a friendly message.
+If the `srv3` request returns nothing usable, the same track is fetched again
+without `fmt` (the `srv1` form). Word timing is lost, but phrase mode still
+works — a downgrade instead of a failure.
+
+Failures are told apart, because "this video has no captions" and "YouTube is
+not answering" need different messages:
+
+| Response                             | Meaning                                      |
+| ------------------------------------ | -------------------------------------------- |
+| `404 { "error": "no_transcript" }`   | YouTube answered; the video has no captions. |
+| `404 { "error": "unavailable" }`     | The video is private, removed, or blocked.   |
+| `502 { "error": "upstream_failed" }` | YouTube did not answer. Temporary.           |
+
+Successful transcripts are held in an in-memory LRU cache (500 videos, no
+expiry — a published transcript does not change). A cached video keeps working
+through a YouTube outage.
+
+`GET /api/health` fetches a known-good video and reports whether the caption
+path still works. It answers `503` with `{"status":"degraded"}` when the
+upstream is broken, so you find out before your users do.
 
 ## Installing the extension (desktop Chrome)
 
@@ -89,6 +113,16 @@ npm install   # installs eslint + prettier only, no runtime deps
 npm run lint
 npm run format:check   # or `npm run format` to auto-fix
 ```
+
+The site's tests use the built-in Node test runner — no framework, no network:
+
+```bash
+cd site
+npm test
+```
+
+They cover timed-text parsing (both formats), the failure classification, the
+`srv3` → `srv1` downgrade, retry, and the cache.
 
 ## Notes / limits
 

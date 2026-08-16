@@ -32,6 +32,23 @@
     <!-- Status / error messages. -->
     <div id="status" class="status"></div>
 
+    <!-- Transcript search. Opened with "/", closed with Escape. -->
+    <div id="search" class="search hidden">
+      <svg class="search-ico" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M10 4a6 6 0 1 1 0 12 6 6 0 0 1 0-12zm0 2a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm5.7 8.3 4 4a1 1 0 0 1-1.4 1.4l-4-4a1 1 0 0 1 1.4-1.4z"></path>
+      </svg>
+      <input
+        id="search-input"
+        class="search-input"
+        type="text"
+        placeholder="Search transcript"
+        autocomplete="off"
+        spellcheck="false"
+        aria-label="Search transcript"
+      />
+      <span id="search-count" class="search-count"></span>
+    </div>
+
     <!-- Control bar. -->
     <div id="controls" class="controls">
       <div class="scrim"></div>

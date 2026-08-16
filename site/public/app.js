@@ -29,6 +29,9 @@ const fullscreenBtn = document.getElementById("fullscreen");
 const seekTrack = document.getElementById("seek-track");
 const seekFill = document.getElementById("seek-fill");
 const seekKnob = document.getElementById("seek-knob");
+const searchEl = document.getElementById("search");
+const searchInput = document.getElementById("search-input");
+const searchCount = document.getElementById("search-count");
 const curTimeEl = document.getElementById("cur-time");
 const durTimeEl = document.getElementById("dur-time");
 
@@ -47,10 +50,18 @@ let speedMenuOpen = false;
 let ready = false;
 let seeking = false;
 let hideTimer = null;
+// search
+let searchOpen = false;
+let searchHaystack = ""; // whole transcript, lowercased
+let searchWordAt = []; // searchWordAt[charIndex] = index into allWords
+let matches = []; // word indexes that begin a match
+let matchAt = -1; // position within `matches`
+let foundWord = -1; // word index to highlight, or -1
 // render cache
 let lastPage = -1;
 let lastWi = -1;
 let lastMode = "";
+let lastFound = -1;
 
 function showStatus(msg) {
   statusEl.textContent = msg;
@@ -59,11 +70,23 @@ function showStatus(msg) {
 
 // --- Transcript ---------------------------------------------------------
 
+// "No captions" and "YouTube is not answering" are different problems. The
+// second one is temporary, so it must not read like a dead end.
+const FAILURE_MESSAGES = {
+  no_transcript: "This video has no captions.",
+  unavailable: "This video is private, removed, or blocked in your region.",
+  upstream_failed:
+    "YouTube's caption service isn't responding. Try again in a moment.",
+};
+
 async function loadTranscript() {
   try {
     const res = await fetch(`/api/transcript?v=${encodeURIComponent(videoId)}`);
     if (!res.ok) {
-      showStatus("No captions available for this video.");
+      const body = await res.json().catch(() => ({}));
+      showStatus(
+        FAILURE_MESSAGES[body.error] || FAILURE_MESSAGES.upstream_failed,
+      );
       return false;
     }
     const data = await res.json();
@@ -94,7 +117,7 @@ async function loadTranscript() {
     return true;
   } catch (err) {
     console.error("transcript fetch failed:", err);
-    showStatus("Couldn't load captions. Is the server running?");
+    showStatus("Couldn't reach the Caption Mode server.");
     return false;
   }
 }
@@ -167,11 +190,19 @@ function renderStage(now) {
   const pageIdx = pageOfWord[curWi] ?? 0;
   const page = pages[pageIdx];
 
-  if (pageIdx === lastPage && wi === lastWi && mode === lastMode) return;
+  if (
+    pageIdx === lastPage &&
+    wi === lastWi &&
+    mode === lastMode &&
+    foundWord === lastFound
+  ) {
+    return;
+  }
   const grew = pageIdx === lastPage && mode === lastMode && wi > lastWi;
   lastPage = pageIdx;
   lastWi = wi;
   lastMode = mode;
+  lastFound = foundWord;
 
   // Render the whole page so the box keeps a stable shape; in flow mode the
   // not-yet-spoken words are invisible (space reserved) and reveal as spoken.
@@ -181,7 +212,11 @@ function renderStage(now) {
     const shown = mode === "phrase" || i <= wi;
     const animate = mode === "flow" && grew && i === wi;
     span.className =
-      "word" + (shown ? "" : " hidden") + (animate ? " new" : "");
+      "word" +
+      (shown ? "" : " hidden") +
+      (animate ? " new" : "") +
+      (i === foundWord ? " found" : "");
+    span.dataset.i = i; // makes the word clickable as a seek target
     span.textContent = allWords[i].text + " ";
     stageEl.appendChild(span);
   }
@@ -191,8 +226,126 @@ function rerender() {
   lastPage = -1;
   lastWi = -1;
   lastMode = "";
+  lastFound = -1;
   if (player && ready) renderStage(player.getCurrentTime());
 }
+
+// --- Seeking to a word --------------------------------------------------
+
+// Words carry their own timing, so the caption text is also a seek control:
+// click a word and the audio moves to where that word is spoken.
+function seekToWord(i) {
+  if (!player || !ready) return;
+  const word = allWords[i];
+  if (!word) return;
+  player.seekTo(word.start, true);
+  rerender();
+}
+
+stageEl.addEventListener("click", (e) => {
+  const span = e.target.closest(".word");
+  if (!span || span.dataset.i === undefined) return;
+  // Stop the page-wide click handler from also toggling play.
+  e.stopPropagation();
+  seekToWord(parseInt(span.dataset.i, 10));
+  wake();
+});
+
+// --- Transcript search --------------------------------------------------
+
+// One lowercased string of the whole transcript, plus a map back from any
+// character to the word it belongs to. Built once, so searching is a plain
+// indexOf scan however long the video is.
+function buildSearchIndex() {
+  const parts = [];
+  searchWordAt = [];
+  let pos = 0;
+  allWords.forEach((w, i) => {
+    const text = w.text.toLowerCase();
+    for (let k = 0; k < text.length; k++) searchWordAt[pos + k] = i;
+    parts.push(text);
+    pos += text.length;
+    searchWordAt[pos] = i; // the joining space belongs to the word before it
+    pos += 1;
+  });
+  searchHaystack = parts.join(" ");
+}
+
+function runSearch(query) {
+  const q = query.trim().toLowerCase();
+  matches = [];
+  matchAt = -1;
+  if (!q) {
+    searchCount.textContent = "";
+    searchCount.classList.remove("none");
+    setFound(-1);
+    return;
+  }
+
+  let from = 0;
+  for (;;) {
+    const hit = searchHaystack.indexOf(q, from);
+    if (hit === -1) break;
+    const wordIndex = searchWordAt[hit];
+    // A query spanning several words still counts once, at its first word.
+    if (matches[matches.length - 1] !== wordIndex) matches.push(wordIndex);
+    from = hit + 1;
+  }
+
+  searchCount.classList.toggle("none", matches.length === 0);
+  if (!matches.length) {
+    searchCount.textContent = "no matches";
+    setFound(-1);
+    return;
+  }
+  // Start from whatever is playing now, so "next" moves forward from here.
+  const now = Math.max(0, lastIndexBefore(allWords, player.getCurrentTime()));
+  const ahead = matches.findIndex((w) => w >= now);
+  matchAt = ahead === -1 ? 0 : ahead;
+  goToMatch(matchAt);
+}
+
+function setFound(wordIndex) {
+  foundWord = wordIndex;
+  rerender();
+}
+
+function goToMatch(index) {
+  if (!matches.length) return;
+  matchAt = (index + matches.length) % matches.length;
+  searchCount.textContent = `${matchAt + 1} / ${matches.length}`;
+  const wordIndex = matches[matchAt];
+  foundWord = wordIndex;
+  // Seek rather than only scroll: the caption box shows one page at a time,
+  // so the way to look at a match is to move playback to it.
+  seekToWord(wordIndex);
+}
+
+function setSearch(open) {
+  searchOpen = open;
+  searchEl.classList.toggle("hidden", !open);
+  document.body.classList.toggle("searching", open);
+  if (open) {
+    searchInput.focus();
+    searchInput.select();
+    wake();
+  } else {
+    searchInput.blur();
+    setFound(-1);
+  }
+}
+
+searchInput.addEventListener("input", () => runSearch(searchInput.value));
+
+searchInput.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    setSearch(false);
+  } else if (e.key === "Enter") {
+    e.preventDefault();
+    goToMatch(matchAt + (e.shiftKey ? -1 : 1));
+  }
+  e.stopPropagation(); // typing must not reach the page shortcuts
+});
 
 function formatTime(s) {
   if (!isFinite(s) || s < 0) s = 0;
@@ -387,6 +540,7 @@ fullscreenBtn.addEventListener("click", () => {
 document.addEventListener("click", (e) => {
   if (!ready) return;
   if (e.target.closest("#controls")) return;
+  if (e.target.closest("#search")) return;
   togglePlay();
 });
 
@@ -394,6 +548,11 @@ document.addEventListener("keydown", (e) => {
   if (e.code === "Space") {
     e.preventDefault();
     togglePlay();
+  } else if (e.key === "/") {
+    e.preventDefault();
+    setSearch(true);
+  } else if (e.key === "Escape" && searchOpen) {
+    setSearch(false);
   }
 });
 
@@ -423,6 +582,7 @@ async function onPlayerReady() {
   speedBtn.textContent = `${player.getPlaybackRate()}×`;
   setTitle();
   ready = true;
+  buildSearchIndex();
   computePages();
   rerender();
   wake();

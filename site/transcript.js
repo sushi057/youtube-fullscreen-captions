@@ -1,0 +1,307 @@
+// Fetching and parsing YouTube caption tracks.
+//
+// This module owns every assumption about YouTube's internal APIs, so when
+// they change there is one place to repair. Callers see a plain transcript or
+// a TranscriptError carrying a code they can turn into a message.
+
+// YouTube's InnerTube (ANDROID) player endpoint returns caption track URLs that
+// are NOT POT-gated, unlike the ones scraped from the watch page HTML.
+const INNERTUBE_API_URL =
+  "https://www.youtube.com/youtubei/v1/player?prettyPrint=false";
+const INNERTUBE_CLIENT_VERSION = "20.10.38";
+const INNERTUBE_UA = `com.google.android.youtube/${INNERTUBE_CLIENT_VERSION} (Linux; U; Android 14)`;
+
+const REQUEST_TIMEOUT_MS = 8000;
+const DEFAULT_RETRIES = 1;
+const DEFAULT_RETRY_DELAY_MS = 400;
+
+/**
+ * A transcript request that did not produce captions.
+ *
+ * `code` tells the caller which of three different things went wrong:
+ *   "no_transcript"   — YouTube answered; this video has no usable captions.
+ *   "unavailable"     — the video is private, removed, or blocked here.
+ *   "upstream_failed" — YouTube did not answer usefully. Not the video's fault.
+ */
+class TranscriptError extends Error {
+  constructor(code, message) {
+    super(message || code);
+    this.name = "TranscriptError";
+    this.code = code;
+  }
+}
+
+// --- Parsing ------------------------------------------------------------
+
+function decodeEntities(text) {
+  return text
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, h) =>
+      String.fromCodePoint(parseInt(h, 16)),
+    )
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(parseInt(d, 10)))
+    .replace(/&amp;/g, "&"); // last, so "&amp;lt;" does not become "<"
+}
+
+function tidy(text) {
+  return text.replace(/\s+/g, " ").trim();
+}
+
+// srv3: <p t="startMs" d="durMs"><s>word</s><s t="offsetMs"> word2</s>...</p>
+// Per-word offsets are what word-for-word mode needs.
+function parseSrv3(xml) {
+  const phrases = [];
+  const words = [];
+  let hasWordTiming = false;
+
+  const pRegex = /<p\s+t="(-?\d+)"(?:\s+d="(\d+)")?[^>]*>([\s\S]*?)<\/p>/g;
+  let p;
+  while ((p = pRegex.exec(xml)) !== null) {
+    const startMs = parseInt(p[1], 10);
+    const durMs = p[2] ? parseInt(p[2], 10) : 0;
+    const inner = p[3];
+
+    const segs = [];
+    const sRegex = /<s([^>]*)>([^<]*)<\/s>/g;
+    let s;
+    while ((s = sRegex.exec(inner)) !== null) {
+      const offMatch = s[1].match(/\bt="(\d+)"/);
+      if (offMatch) hasWordTiming = true;
+      segs.push({
+        off: offMatch ? parseInt(offMatch[1], 10) : 0,
+        text: decodeEntities(s[2]),
+      });
+    }
+
+    const phraseText = segs.length
+      ? tidy(segs.map((x) => x.text).join(""))
+      : tidy(decodeEntities(inner.replace(/<[^>]+>/g, "")));
+    if (!phraseText) continue;
+
+    const pi = phrases.length;
+    phrases.push({
+      start: startMs / 1000,
+      dur: durMs / 1000,
+      text: phraseText,
+    });
+
+    for (const seg of segs) {
+      const w = tidy(seg.text);
+      if (!w) continue;
+      words.push({
+        start: round3((startMs + seg.off) / 1000),
+        text: w,
+        p: pi,
+      });
+    }
+  }
+
+  return { hasWordTiming, phrases, words };
+}
+
+// srv1 (the format with no `fmt` parameter): phrase-level only, in seconds.
+//   <text start="1.23" dur="4.5">hello there</text>
+function parseSrv1(xml) {
+  const phrases = [];
+  const regex =
+    /<text\s+start="([\d.]+)"(?:\s+dur="([\d.]+)")?[^>]*>([\s\S]*?)<\/text>/g;
+  let m;
+  while ((m = regex.exec(xml)) !== null) {
+    const text = tidy(decodeEntities(m[3].replace(/<[^>]+>/g, "")));
+    if (!text) continue;
+    phrases.push({
+      start: parseFloat(m[1]),
+      dur: m[2] ? parseFloat(m[2]) : 0,
+      text,
+    });
+  }
+  return { hasWordTiming: false, phrases, words: [] };
+}
+
+function round3(n) {
+  return Math.round(n * 1000) / 1000;
+}
+
+/**
+ * Parse timed text in either srv3 or srv1 form.
+ *
+ * The caller does not have to know which format arrived: srv3 is tried first,
+ * and srv1 answers only when srv3 found nothing.
+ */
+function parseTimedText(xml) {
+  if (!xml) return { hasWordTiming: false, phrases: [], words: [] };
+  const srv3 = parseSrv3(xml);
+  if (srv3.phrases.length) return srv3;
+  return parseSrv1(xml);
+}
+
+// --- Fetching -----------------------------------------------------------
+
+// Prefer English, and among English prefer the auto-generated ("asr") track,
+// since only asr tracks carry per-word timing for word-for-word mode.
+function pickTrack(tracks) {
+  const en = tracks.filter((t) => (t.languageCode || "").startsWith("en"));
+  const pool = en.length ? en : tracks;
+  return pool.find((t) => t.kind === "asr") || pool[0];
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Any transport-level problem becomes an upstream_failed TranscriptError, so
+// a hanging or unreachable YouTube never reads as "this video has no captions".
+async function request(fetchImpl, url, options, { retries, retryDelayMs }) {
+  let lastErr;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    if (attempt > 0 && retryDelayMs > 0) await sleep(retryDelayMs);
+    try {
+      const resp = await fetchImpl(url, {
+        ...options,
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
+      if (!resp.ok) {
+        lastErr = new TranscriptError(
+          "upstream_failed",
+          `youtube responded ${resp.status}`,
+        );
+        continue;
+      }
+      return resp;
+    } catch (err) {
+      lastErr = new TranscriptError("upstream_failed", err.message);
+    }
+  }
+  throw lastErr;
+}
+
+async function getPlayerResponse(videoId, fetchImpl, retryOpts) {
+  const resp = await request(
+    fetchImpl,
+    INNERTUBE_API_URL,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": INNERTUBE_UA,
+      },
+      body: JSON.stringify({
+        context: {
+          client: {
+            clientName: "ANDROID",
+            clientVersion: INNERTUBE_CLIENT_VERSION,
+          },
+        },
+        videoId,
+      }),
+    },
+    retryOpts,
+  );
+
+  try {
+    return await resp.json();
+  } catch {
+    // A non-JSON body means the API shape moved or we hit a bot check.
+    throw new TranscriptError("upstream_failed", "innertube returned non-JSON");
+  }
+}
+
+// YouTube reports playability separately from captions. A private or removed
+// video deserves its own message, not "no captions".
+function assertPlayable(data) {
+  const status = data?.playabilityStatus?.status;
+  if (status && status !== "OK" && status !== "LIVE_STREAM_OFFLINE") {
+    throw new TranscriptError(
+      "unavailable",
+      data.playabilityStatus.reason || status,
+    );
+  }
+}
+
+/**
+ * Fetch and parse a video's captions.
+ *
+ * Options exist for tests and for the health check; normal callers pass none.
+ * @returns {Promise<{hasWordTiming: boolean, phrases: Array, words: Array}>}
+ * @throws {TranscriptError}
+ */
+async function fetchTranscript(videoId, options = {}) {
+  const fetchImpl = options.fetchImpl || globalThis.fetch;
+  const retryOpts = {
+    retries: options.retries ?? DEFAULT_RETRIES,
+    retryDelayMs: options.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS,
+  };
+
+  const player = await getPlayerResponse(videoId, fetchImpl, retryOpts);
+  assertPlayable(player);
+
+  const tracks =
+    player?.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
+  if (!tracks.length) {
+    throw new TranscriptError("no_transcript", "video has no caption tracks");
+  }
+
+  const track = pickTrack(tracks);
+  if (!track?.baseUrl) {
+    throw new TranscriptError("no_transcript", "caption track has no url");
+  }
+
+  // srv3 carries per-word timing. When it returns nothing usable, the plain
+  // (srv1) form usually still works — phrase mode instead of a dead end.
+  for (const url of [`${track.baseUrl}&fmt=srv3`, track.baseUrl]) {
+    let xml;
+    try {
+      const res = await request(
+        fetchImpl,
+        url,
+        { headers: { "User-Agent": INNERTUBE_UA } },
+        retryOpts,
+      );
+      xml = await res.text();
+    } catch {
+      continue; // try the other format before declaring the upstream broken
+    }
+    const data = parseTimedText(xml);
+    if (data.phrases.length) return data;
+  }
+
+  throw new TranscriptError("no_transcript", "caption track was empty");
+}
+
+// --- Cache --------------------------------------------------------------
+
+/**
+ * Least-recently-used cache. Transcripts never change once published, so
+ * entries need no expiry — only a ceiling on how many are held.
+ */
+function createCache(max) {
+  const map = new Map();
+  return {
+    get(key) {
+      if (!map.has(key)) return undefined;
+      const value = map.get(key);
+      map.delete(key); // re-insert to mark it as most recently used
+      map.set(key, value);
+      return value;
+    },
+    set(key, value) {
+      if (map.has(key)) map.delete(key);
+      map.set(key, value);
+      if (map.size > max) map.delete(map.keys().next().value);
+    },
+    get size() {
+      return map.size;
+    },
+  };
+}
+
+module.exports = {
+  TranscriptError,
+  parseTimedText,
+  fetchTranscript,
+  createCache,
+};

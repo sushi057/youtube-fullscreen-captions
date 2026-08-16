@@ -22,6 +22,9 @@ const nodeGlobals = {
   __dirname: "readonly",
   console: "readonly",
   fetch: "readonly",
+  globalThis: "readonly",
+  setTimeout: "readonly",
+  AbortSignal: "readonly",
 };
 
 module.exports = [
@@ -41,9 +44,9 @@ module.exports = [
     },
   },
   {
-    files: ["site/*.js"],
+    files: ["site/*.js", "site/test/**/*.js"],
     languageOptions: {
-      ecmaVersion: 2021,
+      ecmaVersion: 2022,
       sourceType: "commonjs",
       globals: nodeGlobals,
     },

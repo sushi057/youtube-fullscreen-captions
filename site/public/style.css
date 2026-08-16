@@ -73,6 +73,26 @@ body.hide-cursor {
   opacity: 0;
 }
 
+/* Words are seek handles: clicking one jumps the audio to where it is spoken. */
+.caption .word:hover {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-thickness: 0.06em;
+  text-underline-offset: 0.12em;
+  text-decoration-color: rgba(255, 255, 255, 0.45);
+}
+
+.caption .word.hidden:hover {
+  text-decoration: none;
+}
+
+/* The word a transcript search landed on. */
+.caption .word.found {
+  background: rgba(255, 214, 102, 0.28);
+  border-radius: 0.06em;
+  box-shadow: 0 0 0 0.06em rgba(255, 214, 102, 0.28);
+}
+
 .caption .word.new {
   animation: word-in 0.16s ease;
 }
@@ -447,4 +467,67 @@ body.muted .icon-muted {
 
 .status.visible {
   display: flex;
+}
+
+/* --- Transcript search ------------------------------------------------- */
+
+.search {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(24, 24, 27, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(12px);
+}
+
+.search.hidden {
+  display: none;
+}
+
+/* The search bar sits across the top, where the title badge already is. */
+/* !important because the idle timer sets this badge's opacity inline. */
+body.searching .mode-badge {
+  opacity: 0.12 !important;
+}
+
+.search-ico {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  fill: rgba(255, 255, 255, 0.55);
+}
+
+.search-input {
+  width: 280px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.search-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.search-count {
+  min-width: 62px;
+  text-align: right;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.search-count.none {
+  color: rgba(255, 138, 128, 0.9);
 }
