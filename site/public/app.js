@@ -159,8 +159,7 @@ function rerender() {
 
 // --- Seeking to a word --------------------------------------------------
 
-// Words carry their own timing, so the caption text is also a seek control:
-// click a word and the audio moves to where that word is spoken.
+// Used by search, to move playback to a match.
 function seekToWord(i) {
   if (!player || !ready) return;
   const word = allWords[i];
@@ -168,15 +167,6 @@ function seekToWord(i) {
   player.seekTo(word.start, true);
   rerender();
 }
-
-stageEl.addEventListener("click", (e) => {
-  const span = e.target.closest(".word");
-  if (!span || span.dataset.i === undefined) return;
-  // Stop the page-wide click handler from also toggling play.
-  e.stopPropagation();
-  seekToWord(parseInt(span.dataset.i, 10));
-  wake();
-});
 
 // --- Transcript search --------------------------------------------------
 

@@ -139,7 +139,6 @@ const CaptionView = (() => {
         (shown ? "" : " hidden") +
         (animate ? " new" : "") +
         (i === found ? " found" : "");
-      span.dataset.i = i; // makes the word clickable as a seek target
       span.textContent = words[i].text + " ";
       el.appendChild(span);
     }

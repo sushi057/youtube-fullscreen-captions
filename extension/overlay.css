@@ -80,18 +80,6 @@ body.cm-open {
   opacity: 0;
 }
 
-#caption-mode-overlay .word:hover {
-  cursor: pointer;
-  text-decoration: underline;
-  text-decoration-thickness: 0.06em;
-  text-underline-offset: 0.12em;
-  text-decoration-color: rgba(255, 255, 255, 0.45);
-}
-
-#caption-mode-overlay .word.hidden:hover {
-  text-decoration: none;
-}
-
 #caption-mode-overlay .word.found {
   background: rgba(255, 214, 102, 0.28);
   border-radius: 0.06em;
@@ -113,4 +101,371 @@ body.cm-open {
 
 #caption-mode-overlay .cm-status.visible {
   display: flex;
+}
+
+/* --- Controls ----------------------------------------------------------
+   Ported from the player page's control bar, scoped to the overlay. */
+
+#caption-mode-overlay .cm-controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transition:
+    opacity 0.35s ease,
+    transform 0.35s ease;
+}
+
+#caption-mode-overlay .cm-controls.idle {
+  opacity: 0;
+  transform: translateY(14px);
+  pointer-events: none;
+}
+
+#caption-mode-overlay.cm-hide-cursor {
+  cursor: none;
+}
+
+#caption-mode-overlay .cm-scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.85) 0%,
+    rgba(0, 0, 0, 0.45) 45%,
+    rgba(0, 0, 0, 0) 100%
+  );
+}
+
+#caption-mode-overlay .cm-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 0 46px 40px;
+}
+
+#caption-mode-overlay .cm-ico {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  color: #fff;
+  opacity: 0.95;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+}
+
+#caption-mode-overlay .cm-ico svg {
+  width: 42px;
+  height: 42px;
+  fill: currentColor;
+}
+
+#caption-mode-overlay .cm-ico.cm-small {
+  width: 36px;
+  height: 48px;
+}
+
+#caption-mode-overlay .cm-ico.cm-small svg {
+  width: 32px;
+  height: 32px;
+}
+
+#caption-mode-overlay .cm-ico:hover {
+  opacity: 1;
+  transform: scale(1.06);
+}
+
+/* Play and pause swap on the same button. */
+#caption-mode-overlay .cm-icon-play {
+  display: none;
+}
+
+#caption-mode-overlay.cm-paused .cm-icon-pause {
+  display: none;
+}
+
+#caption-mode-overlay.cm-paused .cm-icon-play {
+  display: block;
+}
+
+#caption-mode-overlay .cm-pill {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 7px;
+  color: #fff;
+  opacity: 0.9;
+  transition:
+    opacity 0.15s ease,
+    background 0.15s ease;
+}
+
+#caption-mode-overlay .cm-pill:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+#caption-mode-overlay .cm-pill svg {
+  width: 30px;
+  height: 30px;
+  fill: currentColor;
+}
+
+#caption-mode-overlay .cm-pill span {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  min-width: 54px;
+}
+
+#caption-mode-overlay .cm-speed-wrap {
+  position: relative;
+}
+
+#caption-mode-overlay .cm-speed-btn {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 7px;
+  color: #fff;
+  opacity: 0.9;
+  font-weight: 800;
+  font-size: 18px;
+  transition:
+    opacity 0.15s ease,
+    background 0.15s ease;
+}
+
+#caption-mode-overlay .cm-speed-btn:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+#caption-mode-overlay .cm-speed-menu {
+  position: absolute;
+  bottom: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(18, 18, 18, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 96px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+}
+
+#caption-mode-overlay .cm-speed-menu.hidden {
+  display: none;
+}
+
+#caption-mode-overlay .cm-speed-opt {
+  all: unset;
+  cursor: pointer;
+  text-align: center;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  transition: background 0.12s ease;
+}
+
+#caption-mode-overlay .cm-speed-opt:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+#caption-mode-overlay .cm-speed-opt.active {
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+#caption-mode-overlay .cm-seek-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+#caption-mode-overlay .cm-cur-time,
+#caption-mode-overlay .cm-dur-time {
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+  font-variant-numeric: tabular-nums;
+  min-width: 46px;
+  text-align: center;
+}
+
+#caption-mode-overlay .cm-seek-track {
+  position: relative;
+  flex: 1;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+#caption-mode-overlay .cm-seek-bg {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+#caption-mode-overlay .cm-seek-fill {
+  position: absolute;
+  left: 0;
+  height: 5px;
+  border-radius: 3px;
+  background: #fff;
+  width: 0;
+}
+
+#caption-mode-overlay .cm-seek-knob {
+  position: absolute;
+  left: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
+  transform: translateX(-50%);
+}
+
+#caption-mode-overlay .cm-vol-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#caption-mode-overlay .cm-vol-track {
+  position: relative;
+  width: 104px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+#caption-mode-overlay .cm-vol-bg {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+#caption-mode-overlay .cm-vol-fill {
+  position: absolute;
+  left: 0;
+  height: 4px;
+  border-radius: 2px;
+  background: #fff;
+  width: 104px;
+}
+
+#caption-mode-overlay .cm-vol-knob {
+  position: absolute;
+  left: 98px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+#caption-mode-overlay .cm-share {
+  all: unset;
+  cursor: pointer;
+  padding: 10px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+#caption-mode-overlay .cm-share:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+#caption-mode-overlay .cm-share.cm-copied {
+  background: rgba(255, 214, 102, 0.22);
+  border-color: rgba(255, 214, 102, 0.4);
+}
+
+/* --- Transcript search -------------------------------------------------- */
+
+#caption-mode-overlay .cm-search {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(24, 24, 27, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+#caption-mode-overlay .cm-search.hidden {
+  display: none;
+}
+
+#caption-mode-overlay .cm-search-input {
+  width: 280px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+#caption-mode-overlay .cm-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+#caption-mode-overlay .cm-search-count {
+  min-width: 62px;
+  text-align: right;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+#caption-mode-overlay .cm-search-count.none {
+  color: rgba(255, 138, 128, 0.9);
+}
+
+/* The search bar sits across the top, where the badge already is. */
+#caption-mode-overlay.cm-searching .cm-badge {
+  opacity: 0.12 !important;
 }
