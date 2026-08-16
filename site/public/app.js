@@ -108,11 +108,13 @@ async function loadTranscript() {
 
 // Group all words into pages that each fill the caption box (up to MAX_LINES).
 function computePages() {
+  const stage = document.getElementById("stage");
   const packed = CaptionView.packPages(
     allWords,
     document.body,
     stageEl.clientWidth,
     MAX_LINES,
+    stage.clientHeight,
   );
   pages = packed.pages;
   pageOfWord = packed.pageOfWord;

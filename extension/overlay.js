@@ -182,6 +182,7 @@ const CaptionOverlay = (() => {
       root,
       stage.clientWidth,
       MAX_LINES,
+      stage.clientHeight,
     );
     pages = packed.pages;
     pageOfWord = packed.pageOfWord;

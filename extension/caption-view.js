@@ -82,7 +82,12 @@ const CaptionView = (() => {
   // Group words into pages that each fill the caption box. Measured against an
   // offscreen probe that matches the real box's width and font, so a page is
   // always as much text as actually fits.
-  function packPages(words, probeParent, width, maxLines) {
+  //
+  // `maxHeight` is the room the box really has. Without it a page is always
+  // `maxLines` tall, and on a wide, short window that is taller than the stage
+  // — the caption font grows with viewport width while the stage shrinks with
+  // viewport height — so the text runs over the controls.
+  function packPages(words, probeParent, width, maxLines, maxHeight) {
     const pages = [];
     const pageOfWord = [];
     if (!words.length) return { pages, pageOfWord };
@@ -97,7 +102,11 @@ const CaptionView = (() => {
     probeParent.appendChild(probe);
 
     const lineH = parseFloat(getComputedStyle(probe).lineHeight) || 60;
-    const maxH = lineH * maxLines + lineH * 0.15;
+    // Never taller than the room available, and never less than one line.
+    const maxH = Math.max(
+      lineH,
+      Math.min(lineH * maxLines + lineH * 0.15, maxHeight || Infinity),
+    );
 
     let start = 0;
     for (let i = 0; i < words.length; i++) {
