@@ -6,12 +6,17 @@
   "content_scripts": [
     {
       "matches": ["*://www.youtube.com/watch*"],
+      "js": ["intent.js", "curtain.js"],
+      "css": ["curtain.css"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["*://www.youtube.com/watch*"],
       "js": [
         "vendor/transcript-classic.js",
         "caption-view.js",
         "overlay.js",
         "glyph.js",
-        "intent.js",
         "content.js"
       ],
       "css": ["content.css", "overlay.css"],
@@ -21,7 +26,8 @@
       "matches": ["*://www.youtube.com/*"],
       "js": ["glyph.js", "intent.js", "feed.js"],
       "css": ["feed.css"],
-      "run_at": "document_idle"
+      "run_at": "document_idle",
+      "exclude_matches": ["*://www.youtube.com/watch*"]
     }
   ],
   "icons": {

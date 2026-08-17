@@ -1,0 +1,88 @@
+/* The black screen shown while Caption Mode loads, after a click from the feed.
+   It holds the overlay's furniture in the overlay's places, so the real chrome
+   fills it in rather than replacing it. */
+#caption-mode-curtain {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483001; /* above the page, below the feed icon's own layer */
+  background: #000;
+  /* No pointer traffic reaches the page underneath while this is up. */
+  cursor: progress;
+}
+
+#caption-mode-curtain .cmc-badge {
+  position: absolute;
+  top: 28px;
+  left: 40px;
+  width: min(52vw, 620px);
+}
+
+#caption-mode-curtain .cmc-bar {
+  position: absolute;
+  right: 40px;
+  bottom: 34px;
+  left: 40px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+#caption-mode-curtain .cmc-line,
+#caption-mode-curtain .cmc-dot {
+  background: #1c1c1c;
+  border-radius: 4px;
+  /* Slow, low-contrast: a sign of life, not something that asks to be
+     watched. The screen it stands in for is a reading screen. */
+  animation: cmc-pulse 1.6s ease-in-out infinite;
+}
+
+#caption-mode-curtain .cmc-title {
+  height: 20px;
+}
+
+#caption-mode-curtain .cmc-author {
+  width: 38%;
+  height: 13px;
+  margin-top: 10px;
+  animation-delay: 0.15s;
+}
+
+#caption-mode-curtain .cmc-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  flex: none;
+}
+
+#caption-mode-curtain .cmc-dot:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+#caption-mode-curtain .cmc-dot:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+#caption-mode-curtain .cmc-seek {
+  height: 4px;
+  flex: 1;
+  animation-delay: 0.3s;
+}
+
+@keyframes cmc-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Someone who does not want motion gets a still curtain. */
+@media (prefers-reduced-motion: reduce) {
+  #caption-mode-curtain .cmc-line,
+  #caption-mode-curtain .cmc-dot {
+    animation: none;
+    opacity: 0.7;
+  }
+}

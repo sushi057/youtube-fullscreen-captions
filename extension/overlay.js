@@ -933,6 +933,9 @@ const CaptionOverlay = (() => {
     openedFor = videoId();
     root = build();
     document.body.appendChild(root);
+    // The curtain has been standing in for this screen since the page began
+    // loading. Take it down now, not before, so there is no gap between them.
+    if (typeof CaptionCurtain !== "undefined") CaptionCurtain.remove();
     document.body.classList.add("cm-open");
     setTitle();
     wireControls();
