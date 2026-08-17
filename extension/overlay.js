@@ -7,11 +7,16 @@
 // eslint-disable-next-line no-unused-vars
 const CaptionOverlay = (() => {
   const ROOT_ID = "caption-mode-overlay";
-  const MAX_LINES = 4;
+  // How many lines a page may hold, per text size. Smaller text used to show
+  // the same four lines as the largest, which simply left the screen half
+  // empty. The counts keep the filled height roughly constant: about four
+  // lines at the largest size, and proportionally more as the text shrinks.
+  const LINES_BY_SIZE = { l: 4, m: 5, s: 7 };
+  const LINES_DEFAULT = 4;
   // Fullscreen gives back the browser's chrome, so one more line fits. The
   // height cap still applies: at the largest text this asks for more than the
   // box has, and the packer simply keeps what fits.
-  const MAX_LINES_FULLSCREEN = 5;
+  const LINES_FULLSCREEN_BONUS = 1;
   const TICK_MS = 100;
   const SAVE_EVERY_MS = 5000;
   const SPEEDS = [1, 1.25, 1.75, 2];
@@ -289,9 +294,10 @@ const CaptionOverlay = (() => {
   }
 
   function maxLines() {
+    const base = LINES_BY_SIZE[typeChoice.size] || LINES_DEFAULT;
     return document.fullscreenElement === root
-      ? MAX_LINES_FULLSCREEN
-      : MAX_LINES;
+      ? base + LINES_FULLSCREEN_BONUS
+      : base;
   }
 
   function computePages() {
@@ -576,7 +582,9 @@ const CaptionOverlay = (() => {
   ];
   const TYPE_KEY = "captionMode:type";
 
-  let typeChoice = { font: "sans", size: "m", color: "cream" };
+  // Large by default: this is a screen for reading across a room, and someone
+  // who wants more text on it can say so. A saved choice always wins.
+  let typeChoice = { font: "sans", size: "l", color: "cream" };
 
   function loadTypeChoice() {
     try {
@@ -1027,6 +1035,17 @@ const CaptionOverlay = (() => {
     if (!e.target.closest("#caption-mode-overlay")) return;
     if (e.target.closest(CHROME)) return;
     togglePlay();
+  });
+
+  // Double-click the reading area for fullscreen, the way a video player does.
+  // The two single clicks that come with it toggle play and then play again, so
+  // the audio ends where it started.
+  document.addEventListener("dblclick", (e) => {
+    if (!root) return;
+    if (!e.target.closest("#caption-mode-overlay")) return;
+    if (e.target.closest(CHROME)) return;
+    e.preventDefault();
+    toggleFullscreen();
   });
 
   // keydown targets are not always Elements, so closest() needs a guard.
