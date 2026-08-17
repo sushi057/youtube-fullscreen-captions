@@ -207,7 +207,13 @@ const CaptionOverlay = (() => {
     el.classList.add("visible");
   }
 
-  function setTitle() {
+  // Opening from the feed beats the watch page to its own metadata: the title
+  // and channel are rendered after this first runs, so a single read finds
+  // nothing and the badge stays blank. Opening from the toolbar button never
+  // showed this, because by then the page had long since settled. So keep
+  // looking for a short while, and stop as soon as both are in hand.
+  function setTitle(until) {
+    if (!root) return;
     const title = document.querySelector(
       "ytd-watch-metadata #title h1 yt-formatted-string, h1.ytd-watch-metadata",
     );
@@ -218,6 +224,9 @@ const CaptionOverlay = (() => {
     if (author) {
       root.querySelector(".cm-author").textContent = author.textContent.trim();
     }
+    if (title && author) return;
+    const deadline = until || Date.now() + 15000;
+    if (Date.now() < deadline) setTimeout(() => setTitle(deadline), 200);
   }
 
   // A transcript never changes once published, so this needs a ceiling but no
