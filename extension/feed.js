@@ -114,6 +114,27 @@ const CaptionFeed = (() => {
   // YouTube replaces feed contents on navigation, on infinite scroll, and on
   // filter-chip changes. Re-scanning is cheap because every thumbnail we have
   // already handled carries the mark.
+  // TEMPORARY: reports what the script sees, to diagnose a feed where no icon
+  // appears. Remove once the cause is found.
+  let lastReport = "";
+  function report(stage) {
+    const line = JSON.stringify({
+      stage,
+      path: window.location.pathname,
+      runsOn: runsOn(window.location.pathname),
+      oldLinks: document.querySelectorAll("a#thumbnail[href]").length,
+      newLinks: document.querySelectorAll(
+        "a.ytLockupViewModelContentImage[href]",
+      ).length,
+      anyWatchLinks: document.querySelectorAll('a[href*="/watch?v="]').length,
+      marked: document.querySelectorAll(`[${MARK}]`).length,
+      buttons: document.querySelectorAll(`.${BTN_CLASS}`).length,
+    });
+    if (line === lastReport) return; // only speak when something changed
+    lastReport = line;
+    console.log("[Caption Mode]", line);
+  }
+
   let scheduled = false;
   function scheduleScan() {
     if (scheduled) return;
@@ -121,10 +142,13 @@ const CaptionFeed = (() => {
     requestAnimationFrame(() => {
       scheduled = false;
       if (runsOn(window.location.pathname)) decorate(document);
+      report("scan");
     });
   }
 
   function start() {
+    console.log("[Caption Mode] feed script running on", window.location.href);
+    report("start");
     scheduleScan();
     document.addEventListener("yt-navigate-finish", scheduleScan);
     new MutationObserver(scheduleScan).observe(document.body, {
