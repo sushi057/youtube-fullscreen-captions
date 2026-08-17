@@ -116,6 +116,28 @@ const CaptionFeed = (() => {
   // already handled carries the mark.
   // TEMPORARY: reports what the script sees, to diagnose a feed where no icon
   // appears. Remove once the cause is found.
+  // Is the icon in the page but invisible? If feed.css never arrived, position
+  // reads "static" rather than "absolute", and the size is not 28px.
+  function describeFirstButton() {
+    const b = document.querySelector(`.${BTN_CLASS}`);
+    if (!b) return null;
+    const cs = window.getComputedStyle(b);
+    const box = b.getBoundingClientRect();
+    return {
+      cssApplied: cs.position === "absolute" && cs.width === "28px",
+      position: cs.position,
+      display: cs.display,
+      visibility: cs.visibility,
+      opacity: cs.opacity,
+      zIndex: cs.zIndex,
+      size: `${Math.round(box.width)}x${Math.round(box.height)}`,
+      host: b.parentElement ? b.parentElement.tagName : null,
+      hostHidden: b.parentElement
+        ? window.getComputedStyle(b.parentElement).display === "none"
+        : null,
+    };
+  }
+
   let lastReport = "";
   function report(stage) {
     const line = JSON.stringify({
@@ -129,6 +151,7 @@ const CaptionFeed = (() => {
       anyWatchLinks: document.querySelectorAll('a[href*="/watch?v="]').length,
       marked: document.querySelectorAll(`[${MARK}]`).length,
       buttons: document.querySelectorAll(`.${BTN_CLASS}`).length,
+      firstButton: describeFirstButton(),
     });
     if (line === lastReport) return; // only speak when something changed
     lastReport = line;

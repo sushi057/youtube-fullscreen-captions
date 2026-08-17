@@ -5,7 +5,9 @@
   position: absolute;
   top: 4px;
   right: 4px;
-  z-index: 1;
+  /* YouTube stacks its own overlays and inline hover preview above the
+     thumbnail, so sit well clear of them. */
+  z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -55,4 +57,13 @@
 .caption-mode-thumb-btn:focus-visible {
   outline: 2px solid #fff;
   outline-offset: 2px;
+}
+
+/* TEMPORARY: show the icon without hovering, to tell "hidden by our own rule"
+   apart from "not rendering at all". Remove once the cause is found. */
+.caption-mode-thumb-btn {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  outline: 2px solid #f0f !important;
 }
