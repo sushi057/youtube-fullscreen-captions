@@ -76,3 +76,48 @@ test("search returns nothing for an absent phrase or an empty query", () => {
   assert.deepEqual(CaptionView.search(index, "zzzqqq"), []);
   assert.deepEqual(CaptionView.search(index, "   "), []);
 });
+
+test("one channel is shown as it is written", () => {
+  assert.deepEqual(CaptionView.channelLabel(1, "Rick Astley"), {
+    text: "Rick Astley",
+    title: "",
+  });
+});
+
+test("two channels keep YouTube's own wording, conjunction and all", () => {
+  assert.deepEqual(
+    CaptionView.channelLabel(2, "Chris Williamson and Alex Hormozi"),
+    { text: "Chris Williamson and Alex Hormozi", title: "" },
+  );
+});
+
+test("more than two are counted, with the full list kept for the tooltip", () => {
+  assert.deepEqual(CaptionView.channelLabel(3, "A, B and C"), {
+    text: "3 channels",
+    title: "A, B and C",
+  });
+  assert.deepEqual(CaptionView.channelLabel(7, "A, B, C, D, E, F and G"), {
+    text: "7 channels",
+    title: "A, B, C, D, E, F and G",
+  });
+});
+
+test("the cut-off can be moved", () => {
+  assert.deepEqual(CaptionView.channelLabel(3, "A, B and C", 3), {
+    text: "A, B and C",
+    title: "",
+  });
+});
+
+test("no name means no label at all", () => {
+  assert.equal(CaptionView.channelLabel(2, ""), null);
+  assert.equal(CaptionView.channelLabel(2, "   "), null);
+  assert.equal(CaptionView.channelLabel(0, null), null);
+});
+
+test("an unknown count falls back to showing the text", () => {
+  assert.deepEqual(CaptionView.channelLabel(0, "Rick Astley"), {
+    text: "Rick Astley",
+    title: "",
+  });
+});

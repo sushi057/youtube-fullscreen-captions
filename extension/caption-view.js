@@ -207,8 +207,22 @@ const CaptionView = (() => {
     }
   }
 
+  // YouTube now lets several channels share one video. It renders them as a
+  // single run of text — "Chris Williamson and Alex Hormozi" — with the
+  // conjunction glued to the second name, so splitting on it would break in
+  // most languages. Counting the names avoids that: up to `max`, YouTube's own
+  // wording is used as it stands; beyond that, say how many and keep the full
+  // list for a tooltip.
+  function channelLabel(count, whole, max = 2) {
+    const text = (whole || "").trim();
+    if (!text) return null;
+    if (!count || count <= max) return { text, title: "" };
+    return { text: `${count} channels`, title: text };
+  }
+
   return {
     flatten,
+    channelLabel,
     lastIndexBefore,
     buildSearchIndex,
     search,

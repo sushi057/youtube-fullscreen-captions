@@ -217,19 +217,45 @@ const CaptionOverlay = (() => {
   // nothing and the badge stays blank. Opening from the toolbar button never
   // showed this, because by then the page had long since settled. So keep
   // looking for a short while, and stop as soon as both are in hand.
+  // Two layouts. A single-owner video has <ytd-channel-name>; a video shared by
+  // several channels renders them all inside one link in the owner block, as
+  // bare text nodes with a verified badge between them. Counting those text
+  // nodes is how many channels there are.
+  function readChannels() {
+    const link = document.querySelector(
+      "ytd-video-owner-renderer a.ytAttributedStringLink",
+    );
+    if (link) {
+      const count = [...link.childNodes].filter(
+        (n) => n.nodeType === 3 && /\p{L}/u.test(n.textContent),
+      ).length;
+      const whole = link.textContent.replace(/\s+/g, " ").trim();
+      if (count && whole) return { count, whole };
+    }
+    const el =
+      document.querySelector("ytd-channel-name #text a") ||
+      document.querySelector("ytd-channel-name #text");
+    const name = el && el.textContent.trim();
+    return name ? { count: 1, whole: name } : null;
+  }
+
   function setTitle(until) {
     if (!root) return;
     const title = document.querySelector(
       "ytd-watch-metadata #title h1 yt-formatted-string, h1.ytd-watch-metadata",
     );
-    const author = document.querySelector("ytd-channel-name #text a");
+    const channels = readChannels();
     if (title) {
       root.querySelector(".cm-title").textContent = title.textContent.trim();
     }
-    if (author) {
-      root.querySelector(".cm-author").textContent = author.textContent.trim();
+    if (channels) {
+      const label = CaptionView.channelLabel(channels.count, channels.whole);
+      const el = root.querySelector(".cm-author");
+      el.textContent = label.text;
+      if (label.title) el.title = label.title;
+      else el.removeAttribute("title");
     }
-    if (title && author) return;
+    if (title && channels) return;
     const deadline = until || Date.now() + 15000;
     if (Date.now() < deadline) setTimeout(() => setTitle(deadline), 200);
   }
