@@ -48,6 +48,7 @@ const CaptionFeed = (() => {
 
   let btn = null;
   let currentId = null;
+  let currentCard = null;
 
   function build() {
     const b = document.createElement("button");
@@ -78,7 +79,19 @@ const CaptionFeed = (() => {
 
   function hide() {
     currentId = null;
+    currentCard = null;
     if (btn) btn.style.display = "none";
+  }
+
+  // Is the pointer still over the card the icon belongs to? This is asked by
+  // position, not by DOM ancestry, because YouTube's inline preview player
+  // covers the thumbnail while living outside the card in the DOM. Asking
+  // "which card is this element in?" answers "none" for the preview, and the
+  // icon would hide itself the instant the preview appeared.
+  function stillOverCard(x, y) {
+    if (!currentCard || !currentCard.isConnected) return false;
+    const r = currentCard.getBoundingClientRect();
+    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
   }
 
   function showOver(card) {
@@ -92,6 +105,7 @@ const CaptionFeed = (() => {
 
     if (!btn) btn = build();
     currentId = videoId;
+    currentCard = card;
     btn.style.top = `${Math.round(r.top + 8)}px`;
     btn.style.left = `${Math.round(r.left + 8)}px`;
     btn.style.display = "flex";
@@ -103,15 +117,17 @@ const CaptionFeed = (() => {
     if (btn && (target === btn || btn.contains(target))) return; // reaching it
     const card = target.closest && target.closest(CARDS);
     if (card) showOver(card);
-    else hide();
+    else if (!stillOverCard(event.clientX, event.clientY)) hide();
   }
 
   function start() {
     // One delegated listener, so nothing needs re-attaching when YouTube
     // re-renders the feed on scroll, on a filter chip, or on navigation.
     document.addEventListener("mouseover", onPointerOver, true);
-    // A fixed position goes stale the moment the page moves under it.
-    window.addEventListener("scroll", hide, true);
+    // A fixed position goes stale the moment the page moves under it. Not in
+    // the capture phase: that would also catch scrolling inside YouTube's own
+    // widgets, which does not move the feed at all.
+    window.addEventListener("scroll", hide);
     document.addEventListener("yt-navigate-finish", hide);
   }
 
