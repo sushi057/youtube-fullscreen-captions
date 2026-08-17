@@ -4,7 +4,9 @@
 .caption-mode-thumb-btn {
   position: absolute;
   top: 4px;
-  right: 4px;
+  /* Top-left, because YouTube's inline hover preview puts its mute and CC
+     controls in the top-right and paints them over anything placed there. */
+  left: 4px;
   /* YouTube stacks its own overlays and inline hover preview above the
      thumbnail, so sit well clear of them. */
   z-index: 9999;
@@ -26,11 +28,6 @@
   transition: opacity 0.1s ease-in;
 }
 
-/* YouTube's own buttons hold the corner, so step aside for them. */
-.caption-mode-thumb-btn--shift {
-  right: 40px;
-}
-
 .caption-mode-thumb-btn svg {
   width: 20px;
   height: 20px;
@@ -47,7 +44,10 @@
   position: relative;
 }
 
-.caption-mode-host:hover .caption-mode-thumb-btn,
+/* Revealed by hovering the whole card. Hovering only the thumbnail meant
+   YouTube's inline preview could steal the hover target as the pointer moved
+   toward the icon, and the icon vanished just as it was reached for. */
+.caption-mode-item:hover .caption-mode-thumb-btn,
 .caption-mode-thumb-btn:focus-visible {
   opacity: 1;
   visibility: visible;
@@ -57,13 +57,4 @@
 .caption-mode-thumb-btn:focus-visible {
   outline: 2px solid #fff;
   outline-offset: 2px;
-}
-
-/* TEMPORARY: show the icon without hovering, to tell "hidden by our own rule"
-   apart from "not rendering at all". Remove once the cause is found. */
-.caption-mode-thumb-btn {
-  opacity: 1 !important;
-  visibility: visible !important;
-  pointer-events: auto !important;
-  outline: 2px solid #f0f !important;
 }

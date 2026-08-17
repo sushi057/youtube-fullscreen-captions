@@ -20,13 +20,8 @@ function buildButton() {
   btn.type = "button";
   btn.title = "Open in Caption Mode";
   // Icon + label to match YouTube's native action buttons (Share, Download…).
-  // Material "closed caption" glyph: a filled white box with "CC" cut out.
   btn.innerHTML =
-    '<svg class="caption-mode-icon" viewBox="0 0 24 24" aria-hidden="true">' +
-    '<path d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V6c0-1.1-.89-2-2-2zm-8 ' +
-    "7H9.5v-.5h-2v3h2V13H11v1c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 " +
-    "1v1zm7 0h-1.5v-.5h-2v3h2V13H18v1c0 .55-.45 1-1 1h-3c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 " +
-    '1 .45 1 1v1z"/></svg>' +
+    CaptionGlyph.svg("caption-mode-icon") +
     '<span class="caption-mode-text">Caption Mode</span>';
   btn.addEventListener("click", openCaptionMode);
   return btn;
