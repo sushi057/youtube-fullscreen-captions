@@ -34,6 +34,11 @@ you straight into Caption Mode for that video.
 
 ![The icon on a feed thumbnail](docs/images/feed-icon.png)
 
+The icon stays put while YouTube's own preview plays, so you can reach it
+without hurrying.
+
+<img src="docs/images/feed-hover.png" alt="The icon during YouTube's hover preview" width="420">
+
 Press `Escape` to leave. The audio never stops when you enter or leave, so you
 can move in and out of Caption Mode in the middle of a sentence.
 
