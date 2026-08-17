@@ -19,7 +19,7 @@ const CaptionOverlay = (() => {
   const LINES_FULLSCREEN_BONUS = 1;
   const TICK_MS = 100;
   const SAVE_EVERY_MS = 5000;
-  const SPEEDS = [1, 1.25, 1.75, 2];
+  const SPEEDS = [1, 1.25, 1.5, 1.75, 2];
 
   const FAILURE_MESSAGES = {
     no_transcript: "This video has no captions.",
