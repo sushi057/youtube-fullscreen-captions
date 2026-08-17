@@ -20,6 +20,7 @@ const browserGlobals = {
   CaptionOverlay: "readonly",
   CaptionIntent: "readonly",
   CaptionGlyph: "readonly",
+  CaptionCurtain: "readonly",
   CaptionFeed: "readonly",
   CAPTION_MODE_CONFIG: "readonly",
   chrome: "readonly",

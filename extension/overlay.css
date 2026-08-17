@@ -1,9 +1,22 @@
 /* The black layer. Opaque, above everything YouTube draws, and covering the
    whole page — the video keeps playing and decoding underneath. */
+/* While Caption Mode is up, the player must not paint at all.
+   Chrome composites the video in its own layer, which can draw above even a
+   maximum z-index. It showed most clearly in the moment after opening from the
+   feed, while the watch page was still settling: the video appeared straight
+   through the black. Hiding the element sidesteps compositing altogether, and
+   the audio is untouched — visibility does not pause a video. */
+body.cm-open #movie_player video {
+  visibility: hidden !important;
+}
+
 #caption-mode-overlay {
   position: fixed;
   inset: 0;
-  z-index: 2147483000;
+  /* The maximum. While the watch page is still settling, YouTube holds its
+     player in a transient state that paints above lesser values, and the video
+     showed through the overlay for a moment after opening from the feed. */
+  z-index: 2147483647;
   background: #000;
   color: #fff;
   font-family: "Archivo", "Roboto", "Helvetica Neue", Helvetica, sans-serif;

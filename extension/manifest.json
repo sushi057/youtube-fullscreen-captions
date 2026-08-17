@@ -1,9 +1,15 @@
 {
   "manifest_version": 3,
   "name": "Caption Mode for YouTube",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Read a YouTube video as large captions on a black screen, without leaving the page.",
   "content_scripts": [
+    {
+      "matches": ["*://www.youtube.com/watch*"],
+      "js": ["intent.js", "curtain.js"],
+      "css": ["curtain.css"],
+      "run_at": "document_start"
+    },
     {
       "matches": ["*://www.youtube.com/watch*"],
       "js": [
@@ -11,7 +17,6 @@
         "caption-view.js",
         "overlay.js",
         "glyph.js",
-        "intent.js",
         "content.js"
       ],
       "css": ["content.css", "overlay.css"],
@@ -21,7 +26,8 @@
       "matches": ["*://www.youtube.com/*"],
       "js": ["glyph.js", "intent.js", "feed.js"],
       "css": ["feed.css"],
-      "run_at": "document_idle"
+      "run_at": "document_idle",
+      "exclude_matches": ["*://www.youtube.com/watch*"]
     }
   ],
   "icons": {

@@ -73,3 +73,34 @@ test("a missing storage never breaks the caller", () => {
   assert.equal(CaptionIntent.remember(null, "abc123"), false);
   assert.equal(CaptionIntent.take(null, "abc123"), false);
 });
+
+test("peek reports the note without consuming it", () => {
+  const store = fakeStorage();
+  CaptionIntent.remember(store, "abc123");
+  assert.equal(CaptionIntent.peek(store, "abc123"), true);
+  // Still there: the curtain peeks early, the overlay takes it later.
+  assert.equal(CaptionIntent.peek(store, "abc123"), true);
+  assert.equal(CaptionIntent.take(store, "abc123"), true);
+});
+
+test("peek says no for a different video, and leaves the note alone", () => {
+  const store = fakeStorage();
+  CaptionIntent.remember(store, "abc123");
+  assert.equal(CaptionIntent.peek(store, "zzz999"), false);
+  assert.equal(CaptionIntent.take(store, "abc123"), true);
+});
+
+test("peek survives a missing or broken storage", () => {
+  assert.equal(CaptionIntent.peek(null, "abc123"), false);
+  assert.equal(
+    CaptionIntent.peek(
+      {
+        getItem: () => {
+          throw new Error("denied");
+        },
+      },
+      "abc123",
+    ),
+    false,
+  );
+});

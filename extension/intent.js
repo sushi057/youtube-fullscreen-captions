@@ -25,6 +25,17 @@ const CaptionIntent = (() => {
     }
   }
 
+  // Reading without consuming, for the curtain: it runs before the page is
+  // drawn and must not spend the note the overlay still needs.
+  function peek(storage, videoId) {
+    if (!storage) return false;
+    try {
+      return Boolean(videoId) && storage.getItem(KEY) === videoId;
+    } catch {
+      return false;
+    }
+  }
+
   // Reading a note consumes it. Clearing happens even on a mismatch, so a
   // stale note cannot fire later on an unrelated video.
   function take(storage, videoId) {
@@ -39,5 +50,5 @@ const CaptionIntent = (() => {
     }
   }
 
-  return { remember, take };
+  return { remember, peek, take };
 })();
