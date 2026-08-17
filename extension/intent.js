@@ -8,47 +8,52 @@
 // sessionStorage rather than a URL parameter: a parameter would stay in the
 // address bar and leak into any link the user copies.
 
-// eslint-disable-next-line no-unused-vars
-const CaptionIntent = (() => {
-  const KEY = "caption-mode:open";
+// Loaded by two content scripts — the curtain at document_start and the main
+// bundle at document_idle — which share one isolated world. `var` plus this
+// guard means the second load reuses the first instead of throwing.
+var CaptionIntent =
+  typeof CaptionIntent !== "undefined"
+    ? CaptionIntent
+    : (() => {
+        const KEY = "caption-mode:open";
 
-  // Storage can be missing or refuse to answer (private mode, blocked
-  // third-party storage). None of that is worth breaking a click over, so
-  // every path here degrades to "no note".
-  function remember(storage, videoId) {
-    if (!storage || !videoId) return false;
-    try {
-      storage.setItem(KEY, videoId);
-      return true;
-    } catch {
-      return false;
-    }
-  }
+        // Storage can be missing or refuse to answer (private mode, blocked
+        // third-party storage). None of that is worth breaking a click over, so
+        // every path here degrades to "no note".
+        function remember(storage, videoId) {
+          if (!storage || !videoId) return false;
+          try {
+            storage.setItem(KEY, videoId);
+            return true;
+          } catch {
+            return false;
+          }
+        }
 
-  // Reading without consuming, for the curtain: it runs before the page is
-  // drawn and must not spend the note the overlay still needs.
-  function peek(storage, videoId) {
-    if (!storage) return false;
-    try {
-      return Boolean(videoId) && storage.getItem(KEY) === videoId;
-    } catch {
-      return false;
-    }
-  }
+        // Reading without consuming, for the curtain: it runs before the page is
+        // drawn and must not spend the note the overlay still needs.
+        function peek(storage, videoId) {
+          if (!storage) return false;
+          try {
+            return Boolean(videoId) && storage.getItem(KEY) === videoId;
+          } catch {
+            return false;
+          }
+        }
 
-  // Reading a note consumes it. Clearing happens even on a mismatch, so a
-  // stale note cannot fire later on an unrelated video.
-  function take(storage, videoId) {
-    if (!storage) return false;
-    try {
-      const noted = storage.getItem(KEY);
-      if (noted === null) return false;
-      storage.removeItem(KEY);
-      return Boolean(videoId) && noted === videoId;
-    } catch {
-      return false;
-    }
-  }
+        // Reading a note consumes it. Clearing happens even on a mismatch, so a
+        // stale note cannot fire later on an unrelated video.
+        function take(storage, videoId) {
+          if (!storage) return false;
+          try {
+            const noted = storage.getItem(KEY);
+            if (noted === null) return false;
+            storage.removeItem(KEY);
+            return Boolean(videoId) && noted === videoId;
+          } catch {
+            return false;
+          }
+        }
 
-  return { remember, peek, take };
-})();
+        return { remember, peek, take };
+      })();

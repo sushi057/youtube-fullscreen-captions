@@ -10,6 +10,14 @@ body.cm-open #movie_player video {
   visibility: hidden !important;
 }
 
+/* When the channel line stands for a list too long to show, it carries the
+   full list as a tooltip. Say so, quietly. */
+#caption-mode-overlay .cm-author[title] {
+  cursor: help;
+  text-decoration: underline dotted currentColor;
+  text-underline-offset: 3px;
+}
+
 #caption-mode-overlay {
   position: fixed;
   inset: 0;
