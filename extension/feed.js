@@ -30,6 +30,7 @@ const CaptionFeed = (() => {
 
   const MARK = "data-caption-mode";
   const BTN_CLASS = "caption-mode-thumb-btn";
+  const HOST_CLASS = "caption-mode-host";
 
   // The same closed-caption glyph as the watch-page toolbar button, so both
   // entry points read as one feature.
@@ -67,31 +68,46 @@ const CaptionFeed = (() => {
     return btn;
   }
 
-  // One icon per thumbnail, ever. The mark is what makes a re-scan cheap and
-  // stops a second icon appearing when YouTube re-renders around us.
-  function decorateThumb(thumb) {
-    if (thumb.hasAttribute(MARK)) return;
-    const link = thumb.querySelector("a#thumbnail[href]");
-    const videoId = videoIdFrom(link && link.getAttribute("href"));
+  // YouTube is mid-migration between two thumbnail markups, and which one an
+  // account gets varies. The old one is <ytd-thumbnail> with an #hover-overlays
+  // slot; the new one is <yt-lockup-view-model>, which has no such slot. Keying
+  // off the thumbnail link covers both, and survives the next rename of the
+  // wrapper element.
+  const THUMB_LINKS =
+    "a#thumbnail[href], a.ytLockupViewModelContentImage[href]";
+
+  // One icon per link, ever. The mark is what makes a re-scan cheap and stops
+  // a second icon appearing when YouTube re-renders around us.
+  function decorateLink(link) {
+    if (link.hasAttribute(MARK)) return;
+    const videoId = videoIdFrom(link.getAttribute("href"));
     if (!videoId) return; // no id yet, or not a video: leave it unmarked
-    thumb.setAttribute(MARK, "1");
+    link.setAttribute(MARK, "1");
 
     const btn = buildButton(videoId);
-    // YouTube's own hover buttons (Watch Later, queue) live in this slot and
-    // hold the top-right corner. Sit to their left rather than on top.
-    const slot = thumb.querySelector("#hover-overlays");
+    // The old markup has a slot built for exactly this, and YouTube's own
+    // hover buttons (Watch Later, queue) already hold its top-right corner.
+    // Sit to their left rather than on top.
+    const thumb = link.closest("ytd-thumbnail");
+    const slot = thumb && thumb.querySelector("#hover-overlays");
+    let host;
     if (slot) {
       if (slot.childElementCount > 0) btn.classList.add(`${BTN_CLASS}--shift`);
       slot.appendChild(btn);
+      host = thumb;
     } else {
-      thumb.appendChild(btn);
+      // The new markup has no slot, so the link itself becomes the frame.
+      link.appendChild(btn);
+      host = link;
     }
+    // The icon is positioned against this box, and revealed by hovering it.
+    host.classList.add(HOST_CLASS);
   }
 
   function decorate(root) {
     const scope = root && root.querySelectorAll ? root : document;
-    for (const thumb of scope.querySelectorAll("ytd-thumbnail")) {
-      decorateThumb(thumb);
+    for (const link of scope.querySelectorAll(THUMB_LINKS)) {
+      decorateLink(link);
     }
   }
 

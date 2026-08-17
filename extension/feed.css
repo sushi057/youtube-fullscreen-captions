@@ -39,7 +39,13 @@
   background: rgba(0, 0, 0, 0.85);
 }
 
-ytd-thumbnail:hover .caption-mode-thumb-btn,
+/* The box the icon is positioned against. The old markup's <ytd-thumbnail> is
+   already positioned; the new markup's link is not, so say so explicitly. */
+.caption-mode-host {
+  position: relative;
+}
+
+.caption-mode-host:hover .caption-mode-thumb-btn,
 .caption-mode-thumb-btn:focus-visible {
   opacity: 1;
   visibility: visible;
