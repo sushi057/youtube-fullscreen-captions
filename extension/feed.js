@@ -1,8 +1,15 @@
-// Caption Mode's second entry point: an icon on feed thumbnails.
+// Caption Mode's second entry point: an icon over feed thumbnails.
 //
 // This script never opens the overlay. The overlay drives the watch page's own
 // <video>, and a feed page has no player — only muted hover previews. So the
 // icon navigates to the watch page and leaves a note for the script there.
+//
+// The icon is ONE element on <body>, positioned over whichever thumbnail the
+// pointer is on. It is not placed inside the thumbnail, and that is the whole
+// design: YouTube swaps its inline preview player into the hovered thumbnail,
+// re-renders the subtree, and applies `contain` and `overflow: hidden` to it.
+// Anything living in there gets covered, clipped, or thrown away the moment
+// the preview starts. Nothing on <body> can be touched by any of that.
 
 const CaptionFeed = (() => {
   // Only the two surfaces the design asks for. Everything else — the watch
@@ -28,112 +35,87 @@ const CaptionFeed = (() => {
     }
   }
 
-  const MARK = "data-caption-mode";
-  const BTN_CLASS = "caption-mode-thumb-btn";
-  const HOST_CLASS = "caption-mode-host";
-  const ITEM_CLASS = "caption-mode-item";
+  // A feed card, across both of YouTube's thumbnail markups and both layouts.
+  const CARDS =
+    "ytd-rich-item-renderer, ytd-video-renderer, ytd-grid-video-renderer, " +
+    "yt-lockup-view-model";
 
-  // The whole feed card, across both markups and both feed layouts.
-  const ITEMS =
-    "ytd-rich-item-renderer, ytd-video-renderer, yt-lockup-view-model";
+  // The picture within a card, used to place the icon. The card is wider than
+  // the picture in list layouts, so the picture is what we measure.
+  const PICTURES = "ytd-thumbnail, yt-thumbnail-view-model, a#thumbnail";
 
-  // Chrome does not re-inject content scripts on YouTube's SPA navigations, so
-  // the watch-page script only runs on a real page load. The click must
-  // therefore be a full navigation, and YouTube's own anchor must be stopped.
-  function onClick(event, videoId) {
-    event.preventDefault();
-    event.stopPropagation();
-    try {
-      CaptionIntent.remember(window.sessionStorage, videoId);
-    } catch {
-      // Storage blocked. The user still gets the video, just not the overlay.
-    }
-    window.location.href = `https://www.youtube.com/watch?v=${encodeURIComponent(
-      videoId,
-    )}`;
-  }
+  const BTN_ID = "caption-mode-feed-btn";
 
-  function buildButton(videoId) {
-    const btn = document.createElement("button");
-    btn.className = BTN_CLASS;
-    btn.type = "button";
-    btn.title = "Open in Caption Mode";
-    btn.setAttribute("aria-label", "Open in Caption Mode");
-    btn.innerHTML = CaptionGlyph.svg();
-    btn.addEventListener("click", (e) => onClick(e, videoId));
-    return btn;
-  }
+  let btn = null;
+  let currentId = null;
 
-  // YouTube is mid-migration between two thumbnail markups, and which one an
-  // account gets varies. The old one is <ytd-thumbnail> with an #hover-overlays
-  // slot; the new one is <yt-lockup-view-model>, which has no such slot. Keying
-  // off the thumbnail link covers both, and survives the next rename of the
-  // wrapper element.
-  const THUMB_LINKS =
-    "a#thumbnail[href], a.ytLockupViewModelContentImage[href]";
-
-  // One icon per link, ever. The mark is what makes a re-scan cheap and stops
-  // a second icon appearing when YouTube re-renders around us.
-  function decorateLink(link) {
-    if (link.hasAttribute(MARK)) return;
-    const videoId = videoIdFrom(link.getAttribute("href"));
-    if (!videoId) return; // no id yet, or not a video: leave it unmarked
-    link.setAttribute(MARK, "1");
-
-    const btn = buildButton(videoId);
-    // The old markup has a slot built for exactly this.
-    const thumb = link.closest("ytd-thumbnail");
-    const slot = thumb && thumb.querySelector("#hover-overlays");
-    let host;
-    if (slot) {
-      slot.appendChild(btn);
-      host = thumb;
-    } else {
-      // The new markup has no slot, so the link itself becomes the frame.
-      link.appendChild(btn);
-      host = link;
-    }
-    // The icon is positioned against this box.
-    host.classList.add(HOST_CLASS);
-
-    // But it is revealed by hovering the whole card, not the thumbnail. Moving
-    // the pointer toward the icon makes YouTube swap its inline preview over
-    // the thumbnail, which changes the hover target underneath the user and
-    // made the icon vanish just as they reached for it. The card stays put.
-    const card = link.closest(ITEMS) || host;
-    card.classList.add(ITEM_CLASS);
-  }
-
-  function decorate(root) {
-    const scope = root && root.querySelectorAll ? root : document;
-    for (const link of scope.querySelectorAll(THUMB_LINKS)) {
-      decorateLink(link);
-    }
-  }
-
-  // YouTube replaces feed contents on navigation, on infinite scroll, and on
-  // filter-chip changes. Re-scanning is cheap because every thumbnail we have
-  // already handled carries the mark.
-  let scheduled = false;
-  function scheduleScan() {
-    if (scheduled) return;
-    scheduled = true;
-    requestAnimationFrame(() => {
-      scheduled = false;
-      if (runsOn(window.location.pathname)) decorate(document);
+  function build() {
+    const b = document.createElement("button");
+    b.id = BTN_ID;
+    b.type = "button";
+    b.title = "Open in Caption Mode";
+    b.setAttribute("aria-label", "Open in Caption Mode");
+    b.innerHTML = CaptionGlyph.svg();
+    b.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!currentId) return;
+      try {
+        CaptionIntent.remember(window.sessionStorage, currentId);
+      } catch {
+        // Storage blocked. The user still gets the video, just not the overlay.
+      }
+      // A full page load, not an SPA navigation: Chrome does not re-inject
+      // content scripts on YouTube's own in-page navigations, so the watch
+      // script would never run and the overlay would never open.
+      window.location.href = `https://www.youtube.com/watch?v=${encodeURIComponent(
+        currentId,
+      )}`;
     });
+    document.body.appendChild(b);
+    return b;
+  }
+
+  function hide() {
+    currentId = null;
+    if (btn) btn.style.display = "none";
+  }
+
+  function showOver(card) {
+    const link = card.querySelector('a[href*="/watch?v="]');
+    const videoId = videoIdFrom(link && link.getAttribute("href"));
+    if (!videoId) return hide();
+
+    const picture = card.querySelector(PICTURES) || card;
+    const r = picture.getBoundingClientRect();
+    if (r.width < 40 || r.height < 30) return hide(); // collapsed or off-screen
+
+    if (!btn) btn = build();
+    currentId = videoId;
+    btn.style.top = `${Math.round(r.top + 8)}px`;
+    btn.style.left = `${Math.round(r.left + 8)}px`;
+    btn.style.display = "flex";
+  }
+
+  function onPointerOver(event) {
+    if (!runsOn(window.location.pathname)) return hide();
+    const target = event.target;
+    if (btn && (target === btn || btn.contains(target))) return; // reaching it
+    const card = target.closest && target.closest(CARDS);
+    if (card) showOver(card);
+    else hide();
   }
 
   function start() {
-    scheduleScan();
-    document.addEventListener("yt-navigate-finish", scheduleScan);
-    new MutationObserver(scheduleScan).observe(document.body, {
-      childList: true,
-      subtree: true,
-    });
+    // One delegated listener, so nothing needs re-attaching when YouTube
+    // re-renders the feed on scroll, on a filter chip, or on navigation.
+    document.addEventListener("mouseover", onPointerOver, true);
+    // A fixed position goes stale the moment the page moves under it.
+    window.addEventListener("scroll", hide, true);
+    document.addEventListener("yt-navigate-finish", hide);
   }
 
-  return { runsOn, videoIdFrom, decorate, start };
+  return { runsOn, videoIdFrom, start, hide };
 })();
 
 // Guarded because the tests load this file by evaluation, with no DOM.
