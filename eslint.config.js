@@ -18,11 +18,15 @@ const browserGlobals = {
   CaptionView: "readonly",
   TranscriptCore: "readonly",
   CaptionOverlay: "readonly",
+  CaptionIntent: "readonly",
+  CaptionGlyph: "readonly",
+  CaptionFeed: "readonly",
   CAPTION_MODE_CONFIG: "readonly",
   chrome: "readonly",
   navigator: "readonly",
   localStorage: "readonly",
   Element: "readonly",
+  requestAnimationFrame: "readonly",
 };
 
 const nodeGlobals = {

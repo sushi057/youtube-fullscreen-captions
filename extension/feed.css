@@ -1,0 +1,43 @@
+/* The Caption Mode icon over a feed thumbnail.
+   It is a single element on <body>, moved to whichever thumbnail the pointer
+   is on, so nothing YouTube does inside a thumbnail can clip it, cover it, or
+   throw it away when the inline preview player starts.
+
+   `position: fixed` for that reason: it takes its coordinates from the
+   viewport, not from any YouTube container. !important throughout, because
+   YouTube's own rules are more specific than ours and land later. */
+#caption-mode-feed-btn {
+  position: fixed !important;
+  z-index: 2147483000 !important; /* above YouTube's topmost overlays */
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.8);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  color: #fff;
+  cursor: pointer;
+  pointer-events: auto !important;
+  transition: background-color 0.1s ease-in;
+}
+
+#caption-mode-feed-btn:hover {
+  background: rgba(0, 0, 0, 0.96);
+}
+
+#caption-mode-feed-btn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+#caption-mode-feed-btn svg {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+  pointer-events: none; /* clicks belong to the button, not the glyph */
+}

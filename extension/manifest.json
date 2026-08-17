@@ -10,9 +10,17 @@
         "vendor/transcript-classic.js",
         "caption-view.js",
         "overlay.js",
+        "glyph.js",
+        "intent.js",
         "content.js"
       ],
       "css": ["content.css", "overlay.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://www.youtube.com/*"],
+      "js": ["glyph.js", "intent.js", "feed.js"],
+      "css": ["feed.css"],
       "run_at": "document_idle"
     }
   ],
