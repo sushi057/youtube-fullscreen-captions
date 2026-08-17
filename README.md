@@ -28,8 +28,8 @@ extension. It takes about a minute.
 
 ### 1. Download
 
-[**Download the ZIP**](https://github.com/sushi057/youtube-fullscreen-captions/archive/refs/heads/main.zip),
-then unzip it.
+[**Download the ZIP**](https://github.com/sushi057/youtube-fullscreen-captions/releases/latest/download/caption-mode.zip),
+then unzip it. It is about 40 KB.
 
 Put the unzipped folder somewhere you will keep it — your Documents folder is
 fine. Chrome loads the extension from that folder every time it starts, so if
@@ -51,9 +51,11 @@ under the player, next to Share.
 
 ### Updating
 
-Download the ZIP again, replace your old folder with the new one, then open
-`chrome://extensions` and press **Reload** on the Caption Mode card. Chrome does
-not pick up new files on its own.
+Download the ZIP again from
+[the latest release](https://github.com/sushi057/youtube-fullscreen-captions/releases/latest),
+replace your old folder with the new one, then open `chrome://extensions` and
+press **Reload** on the Caption Mode card. Chrome does not pick up new files on
+its own.
 
 <details>
 <summary>Prefer git?</summary>
