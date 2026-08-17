@@ -1,7 +1,10 @@
-# Caption Mode for YouTube
+# Fullscreen Captions for YouTube
 
-Read a YouTube video as large captions on a black screen. The audio keeps
+Read any YouTube video as fullscreen captions on a black screen. The audio keeps
 playing. The video, the thumbnails, the comments, and the sidebar go away.
+
+The extension is called **Caption Mode**, and that is the name you will see on
+the button in YouTube.
 
 It is for the times you want what was said, not what was shown: talks, lectures,
 interviews, podcasts. It is also for reading in a quiet room, at your own speed,

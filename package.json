@@ -1,7 +1,7 @@
 {
-  "name": "yt-blackscreen-captions",
+  "name": "youtube-fullscreen-captions",
   "private": true,
-  "description": "Dev tooling (lint/format) for the Caption Mode extension + site.",
+  "description": "Dev tooling (lint/format) for the Caption Mode extension and its companion site.",
   "scripts": {
     "lint": "eslint .",
     "format": "prettier --write .",
