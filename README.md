@@ -14,15 +14,21 @@ without a video competing for your attention.
 
 ## Install
 
-The extension needs no server, no account, and no configuration.
+No server, no account, no configuration.
 
-1. Download or clone this repository.
-2. Open `chrome://extensions` and turn on **Developer mode**.
-3. Click **Load unpacked** and select the `extension/` folder.
+```bash
+git clone https://github.com/sushi057/youtube-fullscreen-captions.git
+```
 
-That is all. Open YouTube and the two entry points below are there.
+1. Open `chrome://extensions`
+2. Turn on **Developer mode**, top right
+3. Click **Load unpacked** and pick the `extension/` folder
 
-Chrome, Edge, Brave, and other Chromium browsers all work. Desktop only.
+Open any YouTube page and it is there. Chrome, Edge, Brave, and other Chromium
+browsers, on desktop.
+
+To update later: `git pull`, then press **Reload** on the Caption Mode card in
+`chrome://extensions`. Chrome does not pick up new files on its own.
 
 ## Use it
 
@@ -158,8 +164,7 @@ npm run format     # or format:check
 
 Tests use the built-in Node test runner. No framework, and no network.
 
-After changing extension files, open `chrome://extensions` and press **Reload**
-on Caption Mode. Chrome does not pick up new files on its own.
+Changed an extension file? Press **Reload** on the Caption Mode card, as above.
 
 ## License
 
