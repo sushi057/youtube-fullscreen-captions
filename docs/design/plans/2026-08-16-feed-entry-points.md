@@ -1,14 +1,12 @@
 # Feed Entry Points Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Put a hover icon on YouTube feed and search thumbnails that takes the user straight into Caption Mode for that video.
 
 **Architecture:** A new content script (`feed.js`) marks each thumbnail once and adds an icon into the thumbnail's hover overlay. Clicking it writes an intent note to `sessionStorage` and does a full page load of `/watch?v=…`. The existing watch-page script (`content.js`) reads that note on startup and opens the overlay. The note format lives in a third small file (`intent.js`) that both scripts load, so writer and reader cannot drift.
 
 **Tech Stack:** Plain classic scripts (no bundler, no modules — Chrome content scripts cannot import). Chrome Manifest V3. Tests with `node --test`.
 
-**Spec:** `docs/superpowers/specs/2026-08-16-feed-entry-points-design.md`
+**Spec:** `docs/design/specs/2026-08-16-feed-entry-points-design.md`
 
 ## Global Constraints
 

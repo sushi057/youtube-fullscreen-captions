@@ -1,14 +1,12 @@
 # Caption Mode Overlay and Sharing Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Move daily caption reading into a black overlay on the YouTube watch page, and let a reader share one page of captions as a link that shows a picture preview.
 
 **Architecture:** One shared module holds every YouTube API assumption and is copied into both the extension and the site. The extension's service worker fetches transcripts, so the overlay needs no server. The overlay draws over the watch page and reads the page's own `<video>` for timing. The site keeps its player page and gains a stateless share page on Vercel.
 
 **Tech Stack:** Plain ES modules, no bundler. Chrome MV3. Node's built-in test runner. Vercel functions. `@vercel/og` for the preview image.
 
-**Spec:** `docs/superpowers/specs/2026-08-16-caption-mode-overlay-and-sharing-design.md`
+**Spec:** `docs/design/specs/2026-08-16-caption-mode-overlay-and-sharing-design.md`
 
 ## Global Constraints
 
