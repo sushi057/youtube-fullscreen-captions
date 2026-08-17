@@ -37,6 +37,9 @@ const CaptionOverlay = (() => {
   let matches = [];
   let matchAt = -1;
   let videoListeners = null;
+  // Which video the overlay was opened for, so a navigation event that names
+  // the same video is not mistaken for leaving it.
+  let openedFor = null;
   let typeMenuOpen = false;
   let phrases = [];
   // render cache
@@ -918,6 +921,7 @@ const CaptionOverlay = (() => {
     if (root) return;
     video = findVideo();
     if (!video) return;
+    openedFor = videoId();
     root = build();
     document.body.appendChild(root);
     document.body.classList.add("cm-open");
@@ -938,7 +942,8 @@ const CaptionOverlay = (() => {
     wake();
 
     const ok = await loadTranscript();
-    if (!ok) return;
+    // A close during the fetch leaves nothing to render into.
+    if (!ok || !root) return;
     computePages();
     rerender();
     let sinceSave = 0;
@@ -1066,7 +1071,12 @@ const CaptionOverlay = (() => {
 
   // YouTube does not reload between videos. The overlay closes rather than
   // re-fetching in place, which keeps its state simple.
-  document.addEventListener("yt-navigate-finish", () => close());
+  // Close only when the page has moved to a different video. This event also
+  // fires once as a watch page finishes its first load, which used to close an
+  // overlay that had just been opened by a click from the feed.
+  document.addEventListener("yt-navigate-finish", () => {
+    if (root && videoId() !== openedFor) close();
+  });
 
   let resizeTimer = null;
   window.addEventListener("resize", () => {
@@ -1086,5 +1096,9 @@ const CaptionOverlay = (() => {
     isOpen,
     currentPageRange,
     getVideo: () => video,
+    // The watch page builds its player after this script first runs, and open()
+    // gives up quietly when the player is missing. Callers that must not lose
+    // the request ask this first and wait.
+    hasVideo: () => Boolean(findVideo()),
   };
 })();

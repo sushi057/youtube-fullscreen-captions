@@ -80,7 +80,22 @@ function openIfRequested() {
   } catch {
     return; // storage blocked; the user simply lands on the normal page
   }
-  if (CaptionIntent.take(store, id)) CaptionOverlay.toggle();
+  if (!CaptionIntent.take(store, id)) return;
+
+  // The player is not in the page yet when this script first runs, and the
+  // overlay needs it: it drives the watch page's own <video> instead of making
+  // one, and open() gives up quietly when there is none. Opening straight away
+  // therefore dropped the request and left the user on the plain watch page.
+  const deadline = Date.now() + 20000;
+  const tryOpen = () => {
+    if (CaptionOverlay.isOpen()) return;
+    if (CaptionOverlay.hasVideo()) {
+      CaptionOverlay.open();
+      return;
+    }
+    if (Date.now() < deadline) setTimeout(tryOpen, 100);
+  };
+  tryOpen();
 }
 
 // Re-inject on initial load, on YouTube SPA navigation, and whenever the
