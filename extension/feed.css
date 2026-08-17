@@ -1,29 +1,51 @@
 /* The Caption Mode icon on a feed thumbnail.
-   It borrows YouTube's own hover-overlay vocabulary: hidden until the pointer
-   is over the thumbnail, dark translucent chip, top-right corner. */
+   Hidden until the pointer is over the card, dark translucent chip, top-left.
+
+   Nearly everything here is !important. That is not sloppiness: YouTube's own
+   rules are more specific than ours and land later, so plain declarations lose.
+   The same is true of the containment overrides below. */
+
+/* YouTube applies `contain` and `overflow: hidden` to thumbnails. Paint
+   containment clips absolutely-positioned children, so without this the icon
+   is present, styled, and on top — and still invisible, because it is clipped
+   out of its own container. This one rule is what makes the rest work. */
+ytd-thumbnail,
+#thumbnail,
+ytd-rich-item-renderer,
+.caption-mode-host {
+  overflow: visible !important;
+  contain: none !important;
+}
+
+/* The box the icon is positioned against. The old markup's <ytd-thumbnail> is
+   already positioned; the new markup's link is not, so say so explicitly. */
+.caption-mode-host {
+  position: relative !important;
+}
+
 .caption-mode-thumb-btn {
-  position: absolute;
-  top: 4px;
+  position: absolute !important;
+  top: 4px !important;
   /* Top-left, because YouTube's inline hover preview puts its mute and CC
      controls in the top-right and paints them over anything placed there. */
-  left: 4px;
-  /* YouTube stacks its own overlays and inline hover preview above the
-     thumbnail, so sit well clear of them. */
-  z-index: 9999;
-  display: flex;
+  left: 4px !important;
+  /* Above YouTube's overlays and its inline hover preview. */
+  z-index: 99999 !important;
+  display: flex !important;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 28px !important;
+  height: 28px !important;
   padding: 0;
+  margin: 0;
   border: none;
   border-radius: 4px;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.75);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
   color: #fff;
   cursor: pointer;
   /* Hidden means unreachable: no stray click, no tab stop. */
   opacity: 0;
-  visibility: hidden;
   pointer-events: none;
   transition: opacity 0.1s ease-in;
 }
@@ -32,26 +54,21 @@
   width: 20px;
   height: 20px;
   fill: currentColor;
+  pointer-events: none;
 }
 
 .caption-mode-thumb-btn:hover {
-  background: rgba(0, 0, 0, 0.85);
-}
-
-/* The box the icon is positioned against. The old markup's <ytd-thumbnail> is
-   already positioned; the new markup's link is not, so say so explicitly. */
-.caption-mode-host {
-  position: relative;
+  background: rgba(0, 0, 0, 0.95);
 }
 
 /* Revealed by hovering the whole card. Hovering only the thumbnail meant
    YouTube's inline preview could steal the hover target as the pointer moved
    toward the icon, and the icon vanished just as it was reached for. */
 .caption-mode-item:hover .caption-mode-thumb-btn,
+.caption-mode-host:hover .caption-mode-thumb-btn,
 .caption-mode-thumb-btn:focus-visible {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
+  opacity: 1 !important;
+  pointer-events: auto !important;
 }
 
 .caption-mode-thumb-btn:focus-visible {
