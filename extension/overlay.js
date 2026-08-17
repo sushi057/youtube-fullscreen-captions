@@ -934,8 +934,11 @@ const CaptionOverlay = (() => {
     root = build();
     document.body.appendChild(root);
     // The curtain has been standing in for this screen since the page began
-    // loading. Take it down now, not before, so there is no gap between them.
-    if (typeof CaptionCurtain !== "undefined") CaptionCurtain.remove();
+    // loading. Take it down only once this overlay has actually been drawn,
+    // or the watch page shows through for a frame in between.
+    if (typeof CaptionCurtain !== "undefined") {
+      requestAnimationFrame(() => requestAnimationFrame(CaptionCurtain.remove));
+    }
     document.body.classList.add("cm-open");
     setTitle();
     wireControls();

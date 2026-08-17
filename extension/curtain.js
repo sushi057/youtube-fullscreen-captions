@@ -14,6 +14,9 @@
 
 const CaptionCurtain = (() => {
   const ID = "caption-mode-curtain";
+  // Marks the document while the curtain is up, so the stylesheet can keep the
+  // player from painting through it.
+  const CURTAIN_UP = "cm-curtain";
 
   // If the overlay never opens — no player, no captions, a script that threw —
   // the curtain must not leave the user staring at black. This matches the
@@ -51,24 +54,40 @@ const CaptionCurtain = (() => {
   }
 
   function remove() {
+    document.documentElement.classList.remove(CURTAIN_UP);
     const el = document.getElementById(ID);
     if (el) el.remove();
   }
 
-  // document_start runs before <body> exists, so the curtain goes on whatever
-  // is there and moves to <body> as soon as there is one.
+  // document_start runs before <body> exists, so the curtain starts on <html>
+  // and moves into <body> the moment there is one. Waiting for DOMContentLoaded
+  // was far too late: YouTube had drawn its player by then, and a curtain
+  // hanging off <html> loses to it.
+  function moveIntoBody(el) {
+    if (!document.body || el.parentElement === document.body) return false;
+    document.body.appendChild(el);
+    return true;
+  }
+
   function raise() {
     if (!wanted()) return;
     if (document.getElementById(ID)) return;
     const el = build();
+    document.documentElement.classList.add(CURTAIN_UP);
     (document.body || document.documentElement).appendChild(el);
-    if (!document.body) {
-      document.addEventListener(
-        "DOMContentLoaded",
-        () => document.body && document.body.appendChild(el),
-        { once: true },
-      );
+
+    if (!moveIntoBody(el)) {
+      const watcher = new MutationObserver(() => {
+        if (moveIntoBody(el)) watcher.disconnect();
+      });
+      watcher.observe(document.documentElement, { childList: true });
+      // The parser can finish before the observer is even reached.
+      document.addEventListener("DOMContentLoaded", () => {
+        moveIntoBody(el);
+        watcher.disconnect();
+      });
     }
+
     setTimeout(remove, GIVE_UP_MS);
   }
 

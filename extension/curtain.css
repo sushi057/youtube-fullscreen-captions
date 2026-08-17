@@ -1,10 +1,18 @@
+/* The curtain has the same fight as the overlay: the player's own compositing
+   layer can paint above it. While the curtain is up, no video paints. */
+html.cm-curtain video {
+  visibility: hidden !important;
+}
+
 /* The black screen shown while Caption Mode loads, after a click from the feed.
    It holds the overlay's furniture in the overlay's places, so the real chrome
    fills it in rather than replacing it. */
 #caption-mode-curtain {
   position: fixed;
   inset: 0;
-  z-index: 2147483001; /* above the page, below the feed icon's own layer */
+  /* The maximum. YouTube's player paints above lesser values, and while
+     the curtain hangs off <html> it has no other defence. */
+  z-index: 2147483647;
   background: #000;
   /* No pointer traffic reaches the page underneath while this is up. */
   cursor: progress;
